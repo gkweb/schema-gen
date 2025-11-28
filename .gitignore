@@ -1,0 +1,41 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Node.js
+node_modules/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build outputs
+dist/
+*.node
+*.wasm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Generated files
+*.generated.ts
+*.generated.js
+
+# Platform-specific binaries (published separately)
+*.darwin-*.node
+*.linux-*.node
+*.win32-*.node

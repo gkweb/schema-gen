@@ -1,0 +1,392 @@
+openapi: "3.0.3"
+info:
+  title: Petstore API
+  description: A sample API for testing schema-gen
+  version: "1.0.0"
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.petstore.example.com/v1
+    description: Production server
+  - url: https://staging-api.petstore.example.com/v1
+    description: Staging server
+
+tags:
+  - name: pets
+    description: Pet operations
+  - name: users
+    description: User operations
+
+paths:
+  /pets:
+    get:
+      tags:
+        - pets
+      summary: List all pets
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of pets to return
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            $ref: "#/components/schemas/PetStatus"
+      responses:
+        "200":
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags:
+        - pets
+      summary: Create a pet
+      operationId: createPet
+      requestBody:
+        description: Pet to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePetRequest"
+      responses:
+        "201":
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /pets/{petId}:
+    get:
+      tags:
+        - pets
+      summary: Get a pet by ID
+      operationId: getPet
+      parameters:
+        - name: petId
+          in: path
+          description: Pet ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The pet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      tags:
+        - pets
+      summary: Update a pet
+      operationId: updatePet
+      parameters:
+        - name: petId
+          in: path
+          description: Pet ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Pet data to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePetRequest"
+      responses:
+        "200":
+          description: Pet updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags:
+        - pets
+      summary: Delete a pet
+      operationId: deletePet
+      parameters:
+        - name: petId
+          in: path
+          description: Pet ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Pet deleted
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users:
+    get:
+      tags:
+        - users
+      summary: List all users
+      operationId: listUsers
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            default: 1
+        - name: perPage
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: A paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /users/{userId}:
+    get:
+      tags:
+        - users
+      summary: Get a user by ID
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        name:
+          type: string
+          description: Pet name
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+          description: Pet species
+        breed:
+          type: string
+          description: Pet breed
+        age:
+          type: integer
+          description: Pet age in years
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags for the pet
+        owner:
+          $ref: "#/components/schemas/User"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreatePetRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+        tags:
+          type: array
+          items:
+            type: string
+
+    UpdatePetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+
+    PetStatus:
+      type: string
+      enum:
+        - available
+        - pending
+        - adopted
+      description: Pet adoption status
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        avatar:
+          type: string
+          format: uri
+        role:
+          $ref: "#/components/schemas/UserRole"
+        createdAt:
+          type: string
+          format: date-time
+
+    UserRole:
+      type: string
+      enum:
+        - admin
+        - user
+        - guest
+
+    UserListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    Pagination:
+      type: object
+      required:
+        - page
+        - perPage
+        - total
+        - totalPages
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details

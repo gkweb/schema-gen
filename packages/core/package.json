@@ -31,9 +31,9 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "build:binding": "napi build --platform --release --strip ../../crates/schema-gen-binding",
-    "dev": "tsup --watch",
+    "dev": "tsdown --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -46,7 +46,7 @@
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",
     "@types/node": "22.10.0",
-    "tsup": "8.3.5",
+    "tsdown": "0.16.8",
     "typescript": "5.7.2",
     "vitest": "2.1.6"
   },

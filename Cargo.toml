@@ -1,0 +1,46 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/gkweb/schema-gen"
+keywords = ["openapi", "codegen", "typescript", "react-query", "vue-query"]
+categories = ["development-tools", "web-programming"]
+
+[workspace.dependencies]
+# OpenAPI parsing
+openapiv3 = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Error handling
+miette = { version = "7.0", features = ["fancy"] }
+thiserror = "1.0"
+
+# Utilities
+indexmap = { version = "2.0", features = ["serde"] }
+url = "2.5"
+regex = "1.10"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# NAPI-RS
+napi = { version = "2", default-features = false, features = ["serde-json", "napi4"] }
+napi-derive = "2"
+
+# Async (optional)
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+
+# Testing
+pretty_assertions = "1.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

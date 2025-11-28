@@ -1,0 +1,40 @@
+{
+  "name": "@schema-gen/cli",
+  "version": "0.1.0",
+  "description": "CLI for schema-gen - OpenAPI to TypeScript/React Query/Vue Query code generation",
+  "bin": {
+    "schema-gen": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@schema-gen/core": "workspace:*",
+    "cac": "^6.7.14",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "openapi",
+    "codegen",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkweb/schema-gen"
+  }
+}

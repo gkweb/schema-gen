@@ -1,0 +1,36 @@
+[package]
+name = "schema-gen-core"
+description = "Core library for OpenAPI to TypeScript/React Query/Vue Query code generation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+remote = ["dep:tokio", "dep:reqwest"]
+
+[dependencies]
+# OpenAPI parsing
+openapiv3.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+
+# Error handling
+miette.workspace = true
+thiserror.workspace = true
+
+# Utilities
+indexmap.workspace = true
+url.workspace = true
+regex.workspace = true
+
+# Async (optional, for remote specs)
+tokio = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true

@@ -9,13 +9,14 @@
 1. [Executive Summary](#executive-summary)
 2. [Motivation](#motivation)
 3. [Architecture Overview](#architecture-overview)
-4. [Core AST Schema Design](#core-ast-schema-design)
-5. [Plugin System](#plugin-system)
-6. [Configuration API](#configuration-api)
-7. [Implementation Phases](#implementation-phases)
-8. [Performance Targets](#performance-targets)
-9. [Testing Strategy](#testing-strategy)
-10. [Open Questions](#open-questions)
+4. [Runtime Architecture: The Oxide Pattern](#runtime-architecture-the-oxide-pattern)
+5. [Core AST Schema Design](#core-ast-schema-design)
+6. [Plugin System](#plugin-system)
+7. [Configuration API](#configuration-api)
+8. [Implementation Phases](#implementation-phases)
+9. [Performance Targets](#performance-targets)
+10. [Testing Strategy](#testing-strategy)
+11. [Open Questions](#open-questions)
 
 ---
 
@@ -120,6 +121,296 @@ Schema-Gen is a strategic rebuild of OpenAPI code generation tooling, taking ins
 - Write generated source files
 - Create barrel exports (index.ts)
 - Optionally format output (prettier integration)
+
+---
+
+## Runtime Architecture: The Oxide Pattern
+
+Based on research into how modern JavaScript tooling integrates Rust for performance, we've identified a clear community standard pattern used by Tailwind v4 (Oxide), Rolldown/Vite, Rspack, SWC, Lightning CSS, and Biome.
+
+### Industry Analysis
+
+| Project | Rust Integration | Binding Layer | Key Insight |
+|---------|------------------|---------------|-------------|
+| [Tailwind v4 Oxide](https://tailwindcss.com/blog/tailwindcss-v4-alpha) | Core scanning in Rust | NAPI-RS | 10x faster builds, migrated "expensive and parallelizable" parts |
+| [Rolldown/Vite](https://rolldown.rs/) | Full bundler in Rust (OXC) | NAPI-RS | Unified dev/prod, 3-16x faster builds |
+| [Rspack](https://rspack.rs/) | Core bundler in Rust | NAPI-RS | Three-layer architecture (JS API → Binding → Rust Core) |
+| [SWC](https://swc.rs/) | Full compiler in Rust | NAPI-RS | 20x faster than Babel single-thread, 70x on 4 cores |
+| [Lightning CSS](https://lightningcss.dev/) | Full CSS processor in Rust | NAPI-RS | 2.7M lines/sec single-thread, powers Tailwind v4 |
+| [Biome](https://biomejs.dev/) | Linter + formatter in Rust | NAPI-RS | Prettier/ESLint alternative |
+
+### The Standard Pattern: NAPI-RS
+
+**[NAPI-RS](https://napi.rs/)** has emerged as the de-facto standard for Rust-Node.js bindings. It provides:
+
+- **N-API stability** — Works across Node.js versions without recompilation
+- **Automatic TypeScript generation** — `.d.ts` files generated from Rust code
+- **Platform binary distribution** — Handles cross-compilation and npm packaging
+- **WASM fallback** — Same code can compile to WebAssembly for browsers/Deno
+
+### Three-Layer Architecture (Rspack Model)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            THREE-LAYER ARCHITECTURE                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     LAYER 1: JavaScript API                         │   │
+│  │  • User-facing npm package (@schema-gen/core)                       │   │
+│  │  • TypeScript types and interfaces                                  │   │
+│  │  • Config loading and validation                                    │   │
+│  │  • Plugin orchestration (JS/TS plugins)                             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     LAYER 2: Binding Layer                          │   │
+│  │  • @schema-gen/binding (NAPI-RS generated)                          │   │
+│  │  • FFI bridge between JS and Rust                                   │   │
+│  │  • Serialization/deserialization (JSON ↔ Rust structs)              │   │
+│  │  • Platform-specific binaries via optionalDependencies              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     LAYER 3: Rust Core                              │   │
+│  │  • OpenAPI parsing (openapiv3 crate)                                │   │
+│  │  • AST generation and transformation                                │   │
+│  │  • Built-in code generators (types, enums, constants)               │   │
+│  │  • Parallelized processing                                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Platform Binary Distribution
+
+Following the [Lightning CSS](https://github.com/parcel-bundler/lightningcss) and Tailwind Oxide pattern:
+
+```
+@schema-gen/
+├── core/                           # Main package (JS wrapper)
+│   ├── package.json
+│   │   └── optionalDependencies:
+│   │       ├── @schema-gen/binding-darwin-arm64
+│   │       ├── @schema-gen/binding-darwin-x64
+│   │       ├── @schema-gen/binding-linux-x64-gnu
+│   │       ├── @schema-gen/binding-linux-x64-musl
+│   │       ├── @schema-gen/binding-linux-arm64-gnu
+│   │       ├── @schema-gen/binding-win32-x64-msvc
+│   │       └── @schema-gen/binding-wasm32        # Browser/Deno fallback
+│   └── index.js                    # Loads correct binary at runtime
+└── binding-{platform}/             # Platform-specific packages
+    ├── package.json
+    │   ├── os: ["darwin" | "linux" | "win32"]
+    │   └── cpu: ["arm64" | "x64"]
+    └── schema-gen.{platform}.node  # Native binary
+```
+
+### Recommended Architecture for Schema-Gen
+
+Based on industry patterns, we recommend:
+
+#### What Runs in Rust (Performance-Critical)
+
+| Component | Rationale |
+|-----------|-----------|
+| OpenAPI parsing | CPU-intensive, benefits from zero-copy parsing |
+| `$ref` resolution | Graph traversal, benefits from Rust's ownership model |
+| AST generation | Memory-intensive, Rust's allocator is faster |
+| Type normalization | Complex logic (allOf/anyOf/oneOf), parallelizable |
+| Built-in code generation | String building, parallelizable per-endpoint |
+
+#### What Runs in Node.js (Flexibility-Critical)
+
+| Component | Rationale |
+|-----------|-----------|
+| Config loading | JS ecosystem (cosmiconfig, etc.) |
+| Custom plugins | Familiar to users, hot-reloadable |
+| Template rendering | EJS/Handlebars ecosystem |
+| File writing | Node.js fs is sufficient |
+| Watch mode | chokidar ecosystem |
+
+### Existing Rust OpenAPI Ecosystem
+
+We can leverage existing, well-maintained crates:
+
+| Crate | Downloads | Purpose |
+|-------|-----------|---------|
+| [`openapiv3`](https://docs.rs/openapiv3) | 5.3M+ | OpenAPI v3 spec deserialization |
+| [`progenitor`](https://github.com/oxidecomputer/progenitor) | 1.7M+ | Oxide's OpenAPI client generator (reference) |
+| [`utoipa`](https://github.com/juhaku/utoipa) | — | OpenAPI types in Rust (alternative approach) |
+
+The `openapiv3` crate is the clear choice — it's the same one used by `progenitor` (Oxide Computer's generator) and provides complete OpenAPI v3.0/3.1 support with serde integration.
+
+### Package Structure (Updated)
+
+```
+schema-gen/
+├── Cargo.toml                      # Rust workspace
+├── package.json                    # pnpm workspace
+├── pnpm-workspace.yaml
+│
+├── crates/                         # Rust crates
+│   ├── schema-gen-core/            # Core library (pure Rust)
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── parser/             # OpenAPI parsing (openapiv3)
+│   │       ├── ast/                # AST definitions
+│   │       ├── transform/          # OAS → AST
+│   │       └── codegen/            # Built-in generators
+│   │
+│   └── schema-gen-binding/         # NAPI-RS binding layer
+│       ├── Cargo.toml
+│       │   └── [dependencies]
+│       │       └── napi = { version = "2", features = ["serde-json"] }
+│       │       └── napi-derive = "2"
+│       ├── build.rs                # napi build script
+│       └── src/
+│           └── lib.rs              # #[napi] exports
+│
+├── packages/                       # Node.js packages
+│   ├── core/                       # @schema-gen/core
+│   │   ├── package.json
+│   │   │   └── optionalDependencies: { platform binaries }
+│   │   ├── src/
+│   │   │   ├── index.ts            # Main API
+│   │   │   ├── binding.ts          # Native loader
+│   │   │   ├── config.ts           # Config loading
+│   │   │   └── plugins/            # Plugin runtime
+│   │   └── index.d.ts              # Generated from Rust
+│   │
+│   ├── cli/                        # @schema-gen/cli
+│   │   ├── package.json
+│   │   └── src/
+│   │       └── bin.ts
+│   │
+│   └── plugin-sdk/                 # @schema-gen/plugin-sdk
+│       ├── package.json
+│       └── src/
+│           ├── index.ts
+│           └── types.ts
+│
+├── binding-*/                      # Generated platform packages
+│   └── (created by napi build)
+│
+└── plugins/                        # Example/official plugins
+    ├── react-query/
+    ├── vue-query/
+    └── zod-schemas/
+```
+
+### NAPI-RS Configuration
+
+```json
+// packages/core/package.json
+{
+  "name": "@schema-gen/core",
+  "version": "0.1.0",
+  "napi": {
+    "name": "schema-gen",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-unknown-linux-musl",
+        "x86_64-unknown-linux-musl",
+        "aarch64-pc-windows-msvc"
+      ]
+    }
+  },
+  "optionalDependencies": {
+    "@schema-gen/binding-darwin-arm64": "0.1.0",
+    "@schema-gen/binding-darwin-x64": "0.1.0",
+    "@schema-gen/binding-linux-arm64-gnu": "0.1.0",
+    "@schema-gen/binding-linux-arm64-musl": "0.1.0",
+    "@schema-gen/binding-linux-x64-gnu": "0.1.0",
+    "@schema-gen/binding-linux-x64-musl": "0.1.0",
+    "@schema-gen/binding-win32-arm64-msvc": "0.1.0",
+    "@schema-gen/binding-win32-x64-msvc": "0.1.0"
+  }
+}
+```
+
+### Rust Binding Example
+
+```rust
+// crates/schema-gen-binding/src/lib.rs
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+use schema_gen_core::{parse_openapi, transform_to_ast, generate_code};
+
+/// Parse an OpenAPI spec and return the AST as JSON
+#[napi]
+pub fn parse_spec(spec_content: String, format: String) -> Result<String> {
+    let spec = parse_openapi(&spec_content, &format)
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+
+    let ast = transform_to_ast(spec)
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+
+    serde_json::to_string(&ast)
+        .map_err(|e| Error::from_reason(e.to_string()))
+}
+
+/// Generate code for a specific plugin
+#[napi]
+pub fn generate(ast_json: String, plugin: String, config_json: String) -> Result<Vec<GeneratedFile>> {
+    let ast: SchemaAST = serde_json::from_str(&ast_json)
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+
+    let config: PluginConfig = serde_json::from_str(&config_json)
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+
+    generate_code(&ast, &plugin, &config)
+        .map_err(|e| Error::from_reason(e.to_string()))
+}
+
+#[napi(object)]
+pub struct GeneratedFile {
+    pub path: String,
+    pub content: String,
+}
+```
+
+### Performance Expectations
+
+Based on benchmarks from similar tools:
+
+| Tool | Before (JS) | After (Rust/NAPI) | Speedup |
+|------|-------------|-------------------|---------|
+| Tailwind CSS | 960ms | 105ms | ~10x |
+| SWC vs Babel | — | — | 20-70x |
+| Rolldown vs Rollup | 22.9s | 1.4s | ~16x |
+| Lightning CSS | — | 2.7M lines/sec | — |
+
+**Expected for Schema-Gen:**
+- Small specs: < 50ms (vs ~500ms typical JS tools)
+- Large specs (500+ endpoints): < 500ms (vs 5-10s typical)
+- Memory: 50-100MB peak (vs 500MB+ typical)
+
+### Decision: Hybrid Plugin Architecture
+
+Given the research, we recommend:
+
+1. **Built-in plugins in Rust** — TypeScript types, enums, constants (fastest path)
+2. **Custom plugins in TypeScript** — Via Node.js plugin runtime (most flexible)
+3. **WASM fallback** — For browser-based playgrounds or Deno
+
+This matches the Tailwind v4 approach: "migrated the most expensive and parallelizable parts to Rust, while keeping the core framework in TypeScript for extensibility."
+
+### References
+
+- [NAPI-RS Documentation](https://napi.rs/)
+- [Tailwind CSS v4 Alpha Announcement](https://tailwindcss.com/blog/tailwindcss-v4-alpha)
+- [Rolldown GitHub](https://github.com/rolldown/rolldown)
+- [Rspack Architecture](https://rspack.rs/)
+- [Lightning CSS GitHub](https://github.com/parcel-bundler/lightningcss)
+- [OXC Project](https://github.com/oxc-project/oxc)
+- [Progenitor (Oxide OpenAPI Generator)](https://github.com/oxidecomputer/progenitor)
 
 ---
 
@@ -958,42 +1249,48 @@ Measure against:
 
 ## Open Questions
 
-### Technical Decisions Needed
+### Resolved Decisions ✅
 
-1. **Plugin Runtime Strategy**
-   - Pure Rust (fastest, least flexible)?
-   - WASM (sandboxed, polyglot)?
-   - Node.js host (most flexible, slight overhead)?
-   - Hybrid approach?
+1. **Plugin Runtime Strategy** → **Hybrid NAPI-RS Approach**
+   - ✅ Rust core via NAPI-RS for performance-critical operations
+   - ✅ Node.js plugin host for custom TypeScript plugins
+   - ✅ WASM fallback for browser/Deno environments
+   - See [Runtime Architecture: The Oxide Pattern](#runtime-architecture-the-oxide-pattern)
 
-2. **AST Serialization Format**
-   - JSON (universal, verbose)?
-   - MessagePack (compact, binary)?
-   - Protobuf (schema-enforced, tooling)?
-   - Multiple formats?
+2. **Rust OpenAPI Crate** → **`openapiv3`**
+   - ✅ 5.3M+ downloads, well-maintained
+   - ✅ Used by Oxide's `progenitor` generator
+   - ✅ Full OpenAPI v3.0/3.1 support with serde
 
-3. **Template Engine**
+### Technical Decisions Still Needed
+
+1. **AST Serialization Format**
+   - JSON (universal, verbose)? ← Likely default
+   - MessagePack (compact, binary) for internal use?
+   - Multiple formats for different use cases?
+
+2. **Template Engine (for custom plugins)**
    - Handlebars (familiar, limited logic)?
-   - Tera (Jinja2-like, powerful)?
-   - EJS (JavaScript, maximum flexibility)?
-   - Code generation without templates?
+   - EJS (JavaScript, maximum flexibility)? ← Likely choice for JS ecosystem
+   - Code generation without templates (direct string building)?
 
-4. **Naming Convention Handling**
-   - Automatic detection?
+3. **Naming Convention Handling**
+   - Automatic detection from spec?
    - User configuration required?
-   - Per-spec configuration?
+   - Sensible defaults with override capability?
 
-5. **Breaking Change Handling**
+4. **Breaking Change Detection**
    - Strict (fail on breaking change)?
    - Warn only?
-   - Configurable?
+   - Configurable per-project?
 
 ### Community Input Needed
 
-1. Which output formats are highest priority?
+1. Which output formats are highest priority after TypeScript types?
 2. What Orval features are must-haves vs nice-to-haves?
 3. Are there specific pain points with current tools to address?
 4. Interest in contributing plugins?
+5. Preference for monorepo package manager (pnpm recommended by NAPI-RS)?
 
 ---
 
@@ -1021,6 +1318,7 @@ Measure against:
 
 ### B. Rust Crate Dependencies (Initial)
 
+**schema-gen-core/Cargo.toml:**
 ```toml
 [dependencies]
 # OpenAPI parsing
@@ -1028,9 +1326,6 @@ openapiv3 = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
-
-# CLI
-clap = { version = "4.0", features = ["derive"] }
 
 # Error handling
 miette = { version = "7.0", features = ["fancy"] }
@@ -1046,13 +1341,51 @@ tokio = { version = "1.0", features = ["full"], optional = true }
 reqwest = { version = "0.12", optional = true }
 ```
 
+**schema-gen-binding/Cargo.toml:**
+```toml
+[dependencies]
+# NAPI-RS for Node.js bindings
+napi = { version = "2", features = ["serde-json", "async"] }
+napi-derive = "2"
+
+# Core library
+schema-gen-core = { path = "../schema-gen-core" }
+
+[build-dependencies]
+napi-build = "2"
+```
+
+**schema-gen-cli/Cargo.toml:**
+```toml
+[dependencies]
+# CLI framework
+clap = { version = "4.0", features = ["derive"] }
+
+# Core library
+schema-gen-core = { path = "../schema-gen-core" }
+```
+
 ### C. References
 
+**Inspiration & Prior Art:**
 - [Orval Documentation](https://orval.dev/)
+- [Progenitor (Oxide OpenAPI Generator)](https://github.com/oxidecomputer/progenitor)
+
+**Rust-Node.js Integration:**
+- [NAPI-RS Documentation](https://napi.rs/)
+- [NAPI-RS v2 Announcement](https://napi.rs/blog/announce-v2)
+- [Tailwind CSS v4 Alpha (Oxide)](https://tailwindcss.com/blog/tailwindcss-v4-alpha)
+- [Rolldown](https://rolldown.rs/)
+- [Rspack Architecture](https://rspack.rs/)
+- [Lightning CSS](https://github.com/parcel-bundler/lightningcss)
+- [OXC Project](https://github.com/oxc-project/oxc)
+- [SWC](https://swc.rs/)
+
+**Specifications & Libraries:**
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html)
+- [Rust openapiv3 crate](https://docs.rs/openapiv3)
 - [React Query](https://tanstack.com/query/latest)
 - [Vue Query](https://tanstack.com/query/latest/docs/vue/overview)
-- [Rust openapiv3 crate](https://docs.rs/openapiv3)
 
 ---
 

@@ -41,14 +41,14 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "cosmiconfig": "^9.0.0"
+    "cosmiconfig": "9.0.0"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.4",
-    "@types/node": "^22.10.0",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.6"
+    "@napi-rs/cli": "2.18.4",
+    "@types/node": "22.10.0",
+    "tsup": "8.3.5",
+    "typescript": "5.7.2",
+    "vitest": "2.1.6"
   },
   "optionalDependencies": {
     "@schema-gen/binding-darwin-arm64": "0.1.0",

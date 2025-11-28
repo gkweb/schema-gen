@@ -16,13 +16,13 @@
   },
   "dependencies": {
     "@schema-gen/core": "workspace:*",
-    "cac": "^6.7.14",
-    "picocolors": "^1.1.1"
+    "cac": "6.7.14",
+    "picocolors": "1.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.2"
+    "@types/node": "22.10.0",
+    "tsup": "8.3.5",
+    "typescript": "5.7.2"
   },
   "engines": {
     "node": ">=18.0.0"

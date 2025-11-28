@@ -9,14 +9,18 @@
     "dev": "pnpm -r --parallel dev",
     "test": "pnpm -r test",
     "test:rust": "cargo test",
-    "lint": "pnpm -r lint",
+    "lint": "oxlint --config oxlint.json packages/",
+    "lint:fix": "oxlint --config oxlint.json --fix packages/",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\"",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && cargo clean",
     "prepare": "pnpm build:binding"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.10.0",
+    "oxlint": "^0.15.0",
+    "prettier": "^3.4.2",
     "typescript": "^5.7.2"
   },
   "engines": {

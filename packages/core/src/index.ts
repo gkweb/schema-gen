@@ -16,4 +16,5 @@
 export * from './binding';
 export * from './config';
 export * from './types';
-export { createGenerator, Generator } from './generator';
+export { createGenerator } from './generator';
+export type { Generator, CreateGeneratorOptions } from './generator';

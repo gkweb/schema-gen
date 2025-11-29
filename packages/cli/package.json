@@ -4,7 +4,7 @@
   "type": "module",
   "description": "CLI for schema-gen - OpenAPI to TypeScript/React Query/Vue Query code generation",
   "bin": {
-    "schema-gen": "./dist/bin.js"
+    "schema-gen": "./dist/bin.mjs"
   },
   "files": [
     "dist"

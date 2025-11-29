@@ -14,7 +14,8 @@
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\"",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\"",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean && cargo clean"
+    "clean": "pnpm -r clean && cargo clean",
+    "schema-gen": "node packages/cli/dist/bin.js"
   },
   "devDependencies": {
     "@types/node": "22.10.0",

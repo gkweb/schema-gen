@@ -14,8 +14,7 @@
     "format": "prettier --write \"packages/**/*.{ts,tsx,js,json}\"",
     "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,json}\"",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean && cargo clean",
-    "prepare": "pnpm build:binding"
+    "clean": "pnpm -r clean && cargo clean"
   },
   "devDependencies": {
     "@types/node": "22.10.0",

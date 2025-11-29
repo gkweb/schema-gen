@@ -31,7 +31,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "build:binding": "napi build --platform --release --strip ../../crates/schema-gen-binding",
+    "build:binding": "napi build --platform --release --strip --cargo-cwd ../../crates/schema-gen-binding",
     "dev": "tsdown --watch",
     "test": "vitest run",
     "test:watch": "vitest",

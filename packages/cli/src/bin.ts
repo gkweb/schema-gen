@@ -27,13 +27,13 @@ cli.version(getVersion());
 
 // Generate command
 cli
-	.command('generate', 'Generate code from an OpenAPI specification')
+	.command('generate [spec]', 'Generate code from an OpenAPI specification')
 	.alias('gen')
 	.option('-c, --config <path>', 'Path to configuration file')
-	.option('-i, --input <path>', 'Path to OpenAPI specification')
+	.option('-i, --input <path>', 'Path to OpenAPI specification (alternative to positional arg)')
 	.option('-o, --output <dir>', 'Output directory')
 	.option('-w, --watch', 'Watch for changes')
-	.action(async (options: { config?: string; input?: string; output?: string; watch?: boolean }) => {
+	.action(async (spec: string | undefined, options: { config?: string; input?: string; output?: string; watch?: boolean }) => {
 		console.log(pc.cyan('schema-gen') + ' ' + pc.dim(`v${getVersion()}`));
 		console.log();
 
@@ -56,8 +56,10 @@ cli
 				}
 			}
 
-			// Override with CLI options
-			if (options.input) {
+			// Override with CLI options (positional arg takes precedence over -i option)
+			if (spec) {
+				config.input.path = spec;
+			} else if (options.input) {
 				config.input.path = options.input;
 			}
 			if (options.output) {

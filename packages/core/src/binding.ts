@@ -5,7 +5,12 @@
  * The binaries are distributed as separate npm packages (optionalDependencies).
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports */
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 interface NativeBinding {
 	parseSpecToAst: (content: string, format?: string) => string;
@@ -32,6 +37,23 @@ export interface GeneratedFile {
 let nativeBinding: NativeBinding | null = null;
 
 /**
+ * Get the libc variant for Linux
+ */
+function getLinuxLibc(): 'gnu' | 'musl' {
+	try {
+		// Check if we're using musl by looking at the ldd output
+		const { execSync } = require('node:child_process');
+		const lddOutput = execSync('ldd --version 2>&1 || true', { encoding: 'utf-8' });
+		if (lddOutput.includes('musl')) {
+			return 'musl';
+		}
+	} catch {
+		// Ignore errors
+	}
+	return 'gnu';
+}
+
+/**
  * Load the native binding for the current platform
  */
 function loadBinding(): NativeBinding {
@@ -42,10 +64,26 @@ function loadBinding(): NativeBinding {
 	const platform = process.platform;
 	const arch = process.arch;
 
+	// Package root is one level up from dist/
+	const packageRoot = join(__dirname, '..');
+
 	// Try to load the native module
 	const possiblePaths: string[] = [];
 
-	// Platform-specific package names
+	// First try local .node files (for development)
+	if (platform === 'linux') {
+		const libc = getLinuxLibc();
+		possiblePaths.push(join(packageRoot, `schema-gen.${platform}-${arch}-${libc}.node`));
+	} else if (platform === 'darwin') {
+		possiblePaths.push(join(packageRoot, `schema-gen.${platform}-${arch}.node`));
+	} else if (platform === 'win32') {
+		possiblePaths.push(join(packageRoot, `schema-gen.${platform}-${arch}-msvc.node`));
+	}
+
+	// Generic fallback
+	possiblePaths.push(join(packageRoot, 'schema-gen.node'));
+
+	// Platform-specific package names (for published packages)
 	if (platform === 'darwin') {
 		if (arch === 'arm64') {
 			possiblePaths.push('@schema-gen/binding-darwin-arm64');
@@ -68,11 +106,6 @@ function loadBinding(): NativeBinding {
 		}
 	}
 
-	// Also try local .node file (for development)
-	possiblePaths.push('./schema-gen.node');
-	possiblePaths.push('../schema-gen.node');
-	possiblePaths.push(`./schema-gen.${platform}-${arch}.node`);
-
 	// Try each path
 	for (const modulePath of possiblePaths) {
 		try {
@@ -85,7 +118,8 @@ function loadBinding(): NativeBinding {
 
 	throw new Error(
 		`Failed to load native binding for ${platform}-${arch}. ` +
-			'Please ensure the correct platform package is installed.',
+			`Tried: ${possiblePaths.join(', ')}. ` +
+			'Please ensure the native binding is built (pnpm build:binding).',
 	);
 }
 

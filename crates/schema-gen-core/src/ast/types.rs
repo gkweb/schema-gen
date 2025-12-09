@@ -265,4 +265,12 @@ impl TypeRef {
     pub fn any() -> Self {
         Self::Primitive(PrimitiveType::Any)
     }
+
+    /// Create an enum reference
+    pub fn enum_ref(id: impl Into<String>, name: impl Into<String>) -> Self {
+        Self::Enum {
+            id: id.into(),
+            name: name.into(),
+        }
+    }
 }

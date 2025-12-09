@@ -7,8 +7,23 @@ use crate::ast::{
 use crate::error::Result;
 use crate::parser::RefResolver;
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
+use std::collections::HashMap;
 
 use super::normalize::to_pascal_case;
+
+/// Context for collecting extracted enums during transformation
+struct TransformContext {
+    /// Extracted enums (id -> EnumNode)
+    extracted_enums: HashMap<String, EnumNode>,
+}
+
+impl TransformContext {
+    fn new() -> Self {
+        Self {
+            extracted_enums: HashMap::new(),
+        }
+    }
+}
 
 /// Transform all schemas from the OpenAPI spec into AST types and enums
 pub fn transform_schemas(
@@ -20,22 +35,29 @@ pub fn transform_schemas(
         return Ok(());
     };
 
+    let mut ctx = TransformContext::new();
+
     for (name, schema_ref) in &components.schemas {
         // For now, skip references and only process inline schemas
         if let ReferenceOr::Item(schema) = schema_ref {
-            transform_schema(name, schema, ast)?;
+            transform_schema(name, schema, ast, &mut ctx)?;
         }
+    }
+
+    // Add all extracted enums to the AST
+    for (id, enum_node) in ctx.extracted_enums {
+        ast.enums.insert(id, enum_node);
     }
 
     Ok(())
 }
 
 /// Transform a single schema
-fn transform_schema(name: &str, schema: &Schema, ast: &mut SchemaAst) -> Result<()> {
+fn transform_schema(name: &str, schema: &Schema, ast: &mut SchemaAst, ctx: &mut TransformContext) -> Result<()> {
     let schema_data = &schema.schema_data;
 
     // Check if this is an enum
-    if let Some(enum_node) = try_extract_enum(name, schema) {
+    if let Some(enum_node) = try_extract_enum(name, schema, None) {
         ast.enums.insert(enum_node.id.clone(), enum_node);
         return Ok(());
     }
@@ -46,7 +68,7 @@ fn transform_schema(name: &str, schema: &Schema, ast: &mut SchemaAst) -> Result<
         name: to_pascal_case(name),
         original_name: name.to_string(),
         description: schema_data.description.clone(),
-        kind: transform_schema_kind(&schema.schema_kind)?,
+        kind: transform_schema_kind(name, &schema.schema_kind, ctx)?,
         nullable: schema_data.nullable,
         deprecated: schema_data.deprecated,
         source_path: Some(format!("#/components/schemas/{}", name)),
@@ -57,7 +79,7 @@ fn transform_schema(name: &str, schema: &Schema, ast: &mut SchemaAst) -> Result<
 }
 
 /// Try to extract an enum from a schema
-fn try_extract_enum(name: &str, schema: &Schema) -> Option<EnumNode> {
+fn try_extract_enum(name: &str, schema: &Schema, source_path: Option<String>) -> Option<EnumNode> {
     let SchemaKind::Type(Type::String(string_type)) = &schema.schema_kind else {
         return None;
     };
@@ -85,24 +107,62 @@ fn try_extract_enum(name: &str, schema: &Schema) -> Option<EnumNode> {
         description: schema.schema_data.description.clone(),
         variants,
         value_type: EnumValueType::String,
-        source_path: Some(format!("#/components/schemas/{}", name)),
+        source_path: source_path.or_else(|| Some(format!("#/components/schemas/{}", name))),
+    })
+}
+
+/// Try to extract an enum from a StringType (for inline properties)
+fn try_extract_inline_enum(
+    parent_name: &str,
+    property_name: &str,
+    string_type: &openapiv3::StringType,
+) -> Option<EnumNode> {
+    if string_type.enumeration.is_empty() {
+        return None;
+    }
+
+    let enum_name = format!("{}_{}", to_pascal_case(parent_name), to_pascal_case(property_name));
+
+    let variants: Vec<EnumVariant> = string_type
+        .enumeration
+        .iter()
+        .filter_map(|v| {
+            v.as_ref().map(|value| EnumVariant {
+                name: to_screaming_snake_case(value),
+                value: EnumValue::String(value.clone()),
+                description: None,
+            })
+        })
+        .collect();
+
+    Some(EnumNode {
+        id: enum_name.clone(),
+        name: enum_name.clone(),
+        original_name: format!("{}.{}", parent_name, property_name),
+        description: None,
+        variants,
+        value_type: EnumValueType::String,
+        source_path: Some(format!(
+            "#/components/schemas/{}/properties/{}",
+            parent_name, property_name
+        )),
     })
 }
 
 /// Transform a SchemaKind into a TypeKind
-fn transform_schema_kind(kind: &SchemaKind) -> Result<TypeKind> {
+fn transform_schema_kind(parent_name: &str, kind: &SchemaKind, ctx: &mut TransformContext) -> Result<TypeKind> {
     match kind {
-        SchemaKind::Type(type_) => transform_type(type_),
+        SchemaKind::Type(type_) => transform_type(parent_name, type_, ctx),
         SchemaKind::OneOf { one_of } => Ok(TypeKind::Union {
-            variants: one_of.iter().map(transform_reference_or_schema).collect(),
+            variants: one_of.iter().map(|s| transform_reference_or_schema(parent_name, s, ctx)).collect(),
             discriminator: None,
         }),
         SchemaKind::AnyOf { any_of } => Ok(TypeKind::Union {
-            variants: any_of.iter().map(transform_reference_or_schema).collect(),
+            variants: any_of.iter().map(|s| transform_reference_or_schema(parent_name, s, ctx)).collect(),
             discriminator: None,
         }),
         SchemaKind::AllOf { all_of } => Ok(TypeKind::Intersection {
-            parts: all_of.iter().map(transform_reference_or_schema).collect(),
+            parts: all_of.iter().map(|s| transform_reference_or_schema(parent_name, s, ctx)).collect(),
         }),
         SchemaKind::Not { .. } => {
             // Not types are rare, treat as unknown
@@ -113,14 +173,19 @@ fn transform_schema_kind(kind: &SchemaKind) -> Result<TypeKind> {
 }
 
 /// Transform an OpenAPI Type into a TypeKind
-fn transform_type(type_: &Type) -> Result<TypeKind> {
+fn transform_type(parent_name: &str, type_: &Type, ctx: &mut TransformContext) -> Result<TypeKind> {
     match type_ {
         Type::Object(obj) => {
             let properties: Vec<PropertyNode> = obj
                 .properties
                 .iter()
                 .map(|(name, schema_ref)| {
-                    let type_ref = transform_boxed_reference_or_schema(schema_ref);
+                    let type_ref = transform_boxed_reference_or_schema_with_enum_extraction(
+                        parent_name,
+                        name,
+                        schema_ref,
+                        ctx,
+                    );
                     let required = obj.required.contains(name);
 
                     PropertyNode {
@@ -147,7 +212,7 @@ fn transform_type(type_: &Type) -> Result<TypeKind> {
             let items = arr
                 .items
                 .as_ref()
-                .map(|i| transform_boxed_reference_or_schema(i))
+                .map(|i| transform_boxed_reference_or_schema(parent_name, i, ctx))
                 .unwrap_or(TypeRef::any());
 
             Ok(TypeKind::Array {
@@ -202,29 +267,56 @@ fn integer_format_to_string(format: &openapiv3::VariantOrUnknownOrEmpty<openapiv
 }
 
 /// Transform a ReferenceOr<Schema> into a TypeRef
-fn transform_reference_or_schema(schema_ref: &ReferenceOr<Schema>) -> TypeRef {
+fn transform_reference_or_schema(_parent_name: &str, schema_ref: &ReferenceOr<Schema>, ctx: &mut TransformContext) -> TypeRef {
     match schema_ref {
         ReferenceOr::Reference { reference } => {
             let name = RefResolver::extract_schema_name(reference).unwrap_or("Unknown");
             TypeRef::named(name, to_pascal_case(name))
         }
-        ReferenceOr::Item(schema) => transform_schema_to_type_ref(schema),
+        ReferenceOr::Item(schema) => transform_schema_to_type_ref(_parent_name, schema, ctx),
     }
 }
 
 /// Transform a ReferenceOr<Box<Schema>> into a TypeRef
-fn transform_boxed_reference_or_schema(schema_ref: &ReferenceOr<Box<Schema>>) -> TypeRef {
+fn transform_boxed_reference_or_schema(_parent_name: &str, schema_ref: &ReferenceOr<Box<Schema>>, ctx: &mut TransformContext) -> TypeRef {
     match schema_ref {
         ReferenceOr::Reference { reference } => {
             let name = RefResolver::extract_schema_name(reference).unwrap_or("Unknown");
             TypeRef::named(name, to_pascal_case(name))
         }
-        ReferenceOr::Item(schema) => transform_schema_to_type_ref(schema),
+        ReferenceOr::Item(schema) => transform_schema_to_type_ref(_parent_name, schema, ctx),
+    }
+}
+
+/// Transform a ReferenceOr<Box<Schema>> into a TypeRef, extracting inline enums
+fn transform_boxed_reference_or_schema_with_enum_extraction(
+    parent_name: &str,
+    property_name: &str,
+    schema_ref: &ReferenceOr<Box<Schema>>,
+    ctx: &mut TransformContext,
+) -> TypeRef {
+    match schema_ref {
+        ReferenceOr::Reference { reference } => {
+            let name = RefResolver::extract_schema_name(reference).unwrap_or("Unknown");
+            TypeRef::named(name, to_pascal_case(name))
+        }
+        ReferenceOr::Item(schema) => {
+            // Check if this is an inline string enum
+            if let SchemaKind::Type(Type::String(string_type)) = &schema.schema_kind {
+                if let Some(enum_node) = try_extract_inline_enum(parent_name, property_name, string_type) {
+                    let enum_id = enum_node.id.clone();
+                    let enum_name = enum_node.name.clone();
+                    ctx.extracted_enums.insert(enum_id.clone(), enum_node);
+                    return TypeRef::enum_ref(enum_id, enum_name);
+                }
+            }
+            transform_schema_to_type_ref(parent_name, schema, ctx)
+        }
     }
 }
 
 /// Transform an inline schema to a TypeRef
-fn transform_schema_to_type_ref(schema: &Schema) -> TypeRef {
+fn transform_schema_to_type_ref(_parent_name: &str, schema: &Schema, ctx: &mut TransformContext) -> TypeRef {
     match &schema.schema_kind {
         SchemaKind::Type(Type::String(_)) => TypeRef::string(),
         SchemaKind::Type(Type::Number(_)) => TypeRef::number(),
@@ -234,7 +326,7 @@ fn transform_schema_to_type_ref(schema: &Schema) -> TypeRef {
             let items = arr
                 .items
                 .as_ref()
-                .map(|i| transform_boxed_reference_or_schema(i))
+                .map(|i| transform_boxed_reference_or_schema(_parent_name, i, ctx))
                 .unwrap_or(TypeRef::any());
             TypeRef::array(items)
         }
@@ -255,9 +347,17 @@ fn to_camel_case(s: &str) -> String {
 /// Convert to SCREAMING_SNAKE_CASE
 fn to_screaming_snake_case(s: &str) -> String {
     let mut result = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if c.is_uppercase() && i > 0 {
-            result.push('_');
+    let chars: Vec<char> = s.chars().collect();
+
+    for (i, &c) in chars.iter().enumerate() {
+        // Add underscore before uppercase only if:
+        // - Not at the start
+        // - Previous char was lowercase (word boundary)
+        if i > 0 && c.is_uppercase() {
+            let prev = chars[i - 1];
+            if prev.is_lowercase() {
+                result.push('_');
+            }
         }
         result.push(c.to_ascii_uppercase());
     }

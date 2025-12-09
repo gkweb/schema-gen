@@ -39,9 +39,6 @@
     "clean": "rm -rf dist *.node",
     "prepublishOnly": "pnpm build"
   },
-  "dependencies": {
-    "cosmiconfig": "9.0.0"
-  },
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",
     "@types/node": "22.10.0",

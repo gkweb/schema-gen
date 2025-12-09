@@ -158,7 +158,7 @@ pub enum TypeRef {
 
 /// Primitive types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "primitiveType", rename_all = "camelCase")]
 pub enum PrimitiveType {
     /// String type
     String {

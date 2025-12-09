@@ -64,30 +64,52 @@ export interface Plugin {
 	/** Dependencies on other plugins (for ordering) */
 	dependencies?: string[];
 
+	// Phase 1: Initialization
 	/** Called once before processing begins */
 	onStart?(context: PluginContext): void | Promise<void>;
 
-	/** Called for each type node */
-	onType?(node: import('@schema-gen/core').TypeNode, context: PluginContext): import('@schema-gen/core').TypeNode | void;
+	// Phase 2: AST Node Hooks (filter/modify)
+	/** Called for each type node. Return null to filter out, return modified node, or void to keep unchanged */
+	onType?(node: import('@schema-gen/core').TypeNode, context: PluginContext): import('@schema-gen/core').TypeNode | null | void;
 
-	/** Called for each enum node */
-	onEnum?(node: import('@schema-gen/core').EnumNode, context: PluginContext): import('@schema-gen/core').EnumNode | void;
+	/** Called for each enum node. Return null to filter out, return modified node, or void to keep unchanged */
+	onEnum?(node: import('@schema-gen/core').EnumNode, context: PluginContext): import('@schema-gen/core').EnumNode | null | void;
 
-	/** Called for each endpoint node */
-	onEndpoint?(node: import('@schema-gen/core').EndpointNode, context: PluginContext): import('@schema-gen/core').EndpointNode | void;
+	/** Called for each endpoint node. Return null to filter out, return modified node, or void to keep unchanged */
+	onEndpoint?(node: import('@schema-gen/core').EndpointNode, context: PluginContext): import('@schema-gen/core').EndpointNode | null | void;
 
+	// Phase 3: File Emission
 	/** Called once after all nodes processed, to emit files */
 	emit?(context: PluginContext): import('@schema-gen/core').GeneratedFile[] | Promise<import('@schema-gen/core').GeneratedFile[]>;
 
+	// Phase 4: File Post-processing
+	/** Called for each generated file. Return null to filter out, return modified file, or void to keep unchanged */
+	onFile?(file: import('@schema-gen/core').GeneratedFile, context: PluginContext): import('@schema-gen/core').GeneratedFile | null | void | Promise<import('@schema-gen/core').GeneratedFile | null | void>;
+
+	// Phase 5: Cleanup
 	/** Called once after all plugins have emitted */
 	onEnd?(context: PluginContext): void | Promise<void>;
+}
+
+/**
+ * Rust binding interface for calling built-in generators
+ */
+export interface PluginBinding {
+	/** Generate TypeScript types from AST */
+	generateTypes(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
+
+	/** Generate TypeScript enums from AST */
+	generateEnums(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
+
+	/** Generate constants from AST */
+	generateConstants(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
 }
 
 /**
  * Plugin context provided to all plugin hooks
  */
 export interface PluginContext {
-	/** Full AST for reference */
+	/** Full AST (read-only after Phase 2) */
 	ast: import('@schema-gen/core').SchemaAst;
 
 	/** Plugin configuration from user config */
@@ -95,6 +117,9 @@ export interface PluginContext {
 
 	/** Output directory */
 	outputDir: string;
+
+	/** Config file directory (for resolving relative paths) */
+	configDir: string;
 
 	/** Logger */
 	log: Logger;
@@ -104,6 +129,9 @@ export interface PluginContext {
 
 	/** Helper utilities */
 	utils: PluginUtils;
+
+	/** Rust binding access for calling built-in generators */
+	binding: PluginBinding;
 }
 
 /**
@@ -169,9 +197,22 @@ export function createPluginContext(
 		ast,
 		config: options?.config ?? {},
 		outputDir: options?.outputDir ?? './output',
+		configDir: options?.configDir ?? process.cwd(),
 		log: options?.log ?? createConsoleLogger(),
 		shared: options?.shared ?? new Map(),
 		utils: createPluginUtils(ast),
+		binding: options?.binding ?? createMockBinding(),
+	};
+}
+
+/**
+ * Create a mock binding (for testing)
+ */
+function createMockBinding(): PluginBinding {
+	return {
+		generateTypes: () => [],
+		generateEnums: () => [],
+		generateConstants: () => [],
 	};
 }
 
@@ -255,7 +296,7 @@ function createPluginUtils(ast: import('@schema-gen/core').SchemaAst): PluginUti
  * Convert a primitive type to its TypeScript string representation
  */
 function primitiveToString(prim: import('@schema-gen/core').PrimitiveType): string {
-	switch (prim.type) {
+	switch (prim.primitiveType) {
 		case 'string':
 			return 'string';
 		case 'number':

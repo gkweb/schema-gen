@@ -129,12 +129,12 @@ export type TypeRef =
  * Primitive types
  */
 export type PrimitiveType =
-	| { type: 'string'; format?: string; pattern?: string; minLength?: number; maxLength?: number }
-	| { type: 'number'; format?: string; minimum?: number; maximum?: number }
-	| { type: 'integer'; format?: string; minimum?: number; maximum?: number }
-	| { type: 'boolean' }
-	| { type: 'null' }
-	| { type: 'any' };
+	| { primitiveType: 'string'; format?: string; pattern?: string; minLength?: number; maxLength?: number }
+	| { primitiveType: 'number'; format?: string; minimum?: number; maximum?: number }
+	| { primitiveType: 'integer'; format?: string; minimum?: number; maximum?: number }
+	| { primitiveType: 'boolean' }
+	| { primitiveType: 'null' }
+	| { primitiveType: 'any' };
 
 /**
  * An enum definition node
@@ -297,4 +297,16 @@ export interface SecurityRequirement {
 	name: string;
 	/** Required scopes */
 	scopes: string[];
+}
+
+/**
+ * A generated file from a plugin
+ */
+export interface GeneratedFile {
+	/** Output file path (relative to output directory) */
+	path: string;
+	/** File content */
+	content: string;
+	/** Skip formatting (e.g., for non-code files) */
+	skipFormat?: boolean;
 }

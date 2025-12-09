@@ -2,12 +2,16 @@
  * Configuration loading and validation
  */
 
-import { cosmiconfig } from 'cosmiconfig';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
- * Schema-gen configuration
+ * User-facing configuration options
+ *
+ * This is the type users interact with in their config files.
  */
-export interface SchemaGenConfig {
+export interface UserConfig {
 	/** Working directory for resolving relative paths (defaults to config file directory) */
 	cwd?: string;
 
@@ -33,68 +37,125 @@ export interface SchemaGenConfig {
 	plugins: PluginConfig[];
 
 	/** Global transforms */
-	transform?: {
-		/** Naming conventions */
-		naming?: {
-			types?: 'PascalCase' | 'camelCase' | 'preserve';
-			properties?: 'PascalCase' | 'camelCase' | 'snake_case' | 'preserve';
-			enums?: 'PascalCase' | 'SCREAMING_SNAKE' | 'preserve';
-		};
-		/** Type mappings */
-		typeOverrides?: Record<string, string>;
-		/** Include filters */
-		include?: {
-			tags?: string[];
-			paths?: string[];
-		};
-		/** Exclude filters */
-		exclude?: {
-			tags?: string[];
-			operationIds?: string[];
-		};
-	};
+	transform?: TransformConfig;
 
 	/** Fetch strategy configuration */
-	fetch?: {
-		/** Default fetch implementation */
-		default?: 'fetch' | 'axios' | 'ky' | 'custom';
-		/** Custom implementation */
-		custom?: {
-			import: string;
-			function: string;
-		};
-		/** Per-endpoint overrides */
-		overrides?: Record<string, string>;
-	};
+	fetch?: FetchConfig;
 
 	/** React Query specific options */
-	reactQuery?: {
-		/** Query key factory style */
-		queryKeys?: 'array' | 'object';
-		/** Suspense support */
-		suspense?: boolean;
-		/** Infinite query detection */
-		infiniteQueries?: {
-			detectByParam?: string[];
-		};
-	};
+	reactQuery?: ReactQueryConfig;
 
 	/** Vue Query specific options */
-	vueQuery?: {
-		/** Composition API style */
-		compositionApi?: boolean;
-	};
+	vueQuery?: VueQueryConfig;
 
 	/** Code style */
-	style?: {
-		semi?: boolean;
-		quotes?: 'single' | 'double';
-		trailingComma?: 'all' | 'es5' | 'none';
-		tabWidth?: number;
-		useTabs?: boolean;
-		printWidth?: number;
+	style?: StyleConfig;
+}
+
+/**
+ * Transform configuration
+ */
+export interface TransformConfig {
+	/** Naming conventions */
+	naming?: {
+		types?: 'PascalCase' | 'camelCase' | 'preserve';
+		properties?: 'PascalCase' | 'camelCase' | 'snake_case' | 'preserve';
+		enums?: 'PascalCase' | 'SCREAMING_SNAKE' | 'preserve';
+	};
+	/** Type mappings */
+	typeOverrides?: Record<string, string>;
+	/** Include filters */
+	include?: {
+		tags?: string[];
+		paths?: string[];
+	};
+	/** Exclude filters */
+	exclude?: {
+		tags?: string[];
+		operationIds?: string[];
 	};
 }
+
+/**
+ * Fetch configuration
+ */
+export interface FetchConfig {
+	/** Default fetch implementation */
+	default?: 'fetch' | 'axios' | 'ky' | 'custom';
+	/** Custom implementation */
+	custom?: {
+		import: string;
+		function: string;
+	};
+	/** Per-endpoint overrides */
+	overrides?: Record<string, string>;
+}
+
+/**
+ * React Query configuration
+ */
+export interface ReactQueryConfig {
+	/** Query key factory style */
+	queryKeys?: 'array' | 'object';
+	/** Suspense support */
+	suspense?: boolean;
+	/** Infinite query detection */
+	infiniteQueries?: {
+		detectByParam?: string[];
+	};
+}
+
+/**
+ * Vue Query configuration
+ */
+export interface VueQueryConfig {
+	/** Composition API style */
+	compositionApi?: boolean;
+}
+
+/**
+ * Code style configuration
+ */
+export interface StyleConfig {
+	semi?: boolean;
+	quotes?: 'single' | 'double';
+	trailingComma?: 'all' | 'es5' | 'none';
+	tabWidth?: number;
+	useTabs?: boolean;
+	printWidth?: number;
+}
+
+/**
+ * Define a schema-gen configuration with full type support
+ *
+ * @example
+ * ```typescript
+ * // schema-gen.config.ts
+ * import { defineConfig } from '@schema-gen/core';
+ *
+ * export default defineConfig({
+ *   input: {
+ *     path: './openapi.yaml',
+ *   },
+ *   output: {
+ *     dir: './src/api',
+ *     clean: true,
+ *   },
+ *   plugins: [
+ *     'typescript-types',
+ *     'typescript-enums',
+ *   ],
+ * });
+ * ```
+ */
+export function defineConfig(config: UserConfig): UserConfig {
+	return config;
+}
+
+/**
+ * Resolved configuration (same as UserConfig for now)
+ */
+export type SchemaGenConfig = UserConfig;
 
 /**
  * Plugin configuration
@@ -113,59 +174,34 @@ export type PluginConfig =
 export interface ConfigResult {
 	config: SchemaGenConfig;
 	filepath: string;
-	isEmpty?: boolean;
 }
 
-const MODULE_NAME = 'schema-gen';
+/**
+ * Config file names to search for (in order of priority)
+ */
+const CONFIG_FILES = [
+	'schema-gen.config.ts',
+	'schema-gen.config.js',
+	'schema-gen.config.mjs',
+];
 
 /**
- * Load configuration from the filesystem
- *
- * Searches for configuration in the following locations:
- * - schema-gen.config.js
- * - schema-gen.config.ts
- * - schema-gen.config.yaml
- * - schema-gen.config.yml
- * - schema-gen.config.json
- * - .schema-genrc
- * - .schema-genrc.json
- * - .schema-genrc.yaml
- * - .schema-genrc.yml
- * - package.json (schema-gen field)
+ * Load configuration by searching for config files
  *
  * @param searchFrom - Directory to start searching from (default: process.cwd())
  * @returns The configuration and its filepath, or null if not found
  */
 export async function loadConfig(searchFrom?: string): Promise<ConfigResult | null> {
-	const explorer = cosmiconfig(MODULE_NAME, {
-		searchPlaces: [
-			'package.json',
-			`.${MODULE_NAME}rc`,
-			`.${MODULE_NAME}rc.json`,
-			`.${MODULE_NAME}rc.yaml`,
-			`.${MODULE_NAME}rc.yml`,
-			`.${MODULE_NAME}rc.js`,
-			`.${MODULE_NAME}rc.cjs`,
-			`${MODULE_NAME}.config.js`,
-			`${MODULE_NAME}.config.cjs`,
-			`${MODULE_NAME}.config.ts`,
-			`${MODULE_NAME}.config.yaml`,
-			`${MODULE_NAME}.config.yml`,
-			`${MODULE_NAME}.config.json`,
-		],
-	});
+	const startDir = searchFrom ?? process.cwd();
 
-	const result = await explorer.search(searchFrom);
-
-	if (!result || result.isEmpty) {
-		return null;
+	for (const filename of CONFIG_FILES) {
+		const filepath = path.resolve(startDir, filename);
+		if (fs.existsSync(filepath)) {
+			return loadConfigFromFile(filepath);
+		}
 	}
 
-	return {
-		config: result.config as SchemaGenConfig,
-		filepath: result.filepath,
-		isEmpty: result.isEmpty,
-	};
+	return null;
 }
 
 /**
@@ -175,18 +211,35 @@ export async function loadConfig(searchFrom?: string): Promise<ConfigResult | nu
  * @returns The configuration
  */
 export async function loadConfigFromFile(filepath: string): Promise<ConfigResult> {
-	const explorer = cosmiconfig(MODULE_NAME);
-	const result = await explorer.load(filepath);
+	const absolutePath = path.resolve(filepath);
 
-	if (!result) {
-		throw new Error(`Failed to load config from ${filepath}`);
+	if (!fs.existsSync(absolutePath)) {
+		throw new Error(`Config file not found: ${filepath}`);
 	}
 
-	return {
-		config: result.config as SchemaGenConfig,
-		filepath: result.filepath,
-		isEmpty: result.isEmpty,
-	};
+	// Use file:// URL for ESM import
+	const fileUrl = pathToFileURL(absolutePath).href;
+
+	try {
+		const module = await import(fileUrl);
+		const config = module.default ?? module;
+
+		return {
+			config: config as SchemaGenConfig,
+			filepath: absolutePath,
+		};
+	} catch (error) {
+		// Provide helpful error for TypeScript files
+		if (absolutePath.endsWith('.ts') && error instanceof Error) {
+			throw new Error(
+				`Failed to load TypeScript config: ${filepath}\n` +
+					`Run with tsx: npx tsx node_modules/.bin/schema-gen generate\n` +
+					`Or use a .js config file instead.\n` +
+					`Original error: ${error.message}`,
+			);
+		}
+		throw error;
+	}
 }
 
 /**

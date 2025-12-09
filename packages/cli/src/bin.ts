@@ -176,7 +176,7 @@ cli
 	.command('init', 'Initialize a new schema-gen configuration')
 	.option('-f, --force', 'Overwrite existing configuration')
 	.action(async (options: { force?: boolean }) => {
-		const configPath = 'schema-gen.config.yaml';
+		const configPath = 'schema-gen.config.ts';
 
 		if (fs.existsSync(configPath) && !options.force) {
 			console.error(pc.red(`Configuration file already exists: ${configPath}`));
@@ -184,35 +184,19 @@ cli
 			process.exit(1);
 		}
 
-		const defaultConfig = `# schema-gen configuration
-# https://github.com/gkweb/schema-gen
-
-input:
-  path: ./openapi.yaml
-  validation: warn
-
-output:
-  dir: ./src/api
-  structure: flat
-  clean: true
-
-plugins:
-  - typescript-types
-  - typescript-enums
-  # - react-query
-  # - vue-query
-
-# transform:
-#   naming:
-#     types: PascalCase
-#     properties: camelCase
-#     enums: SCREAMING_SNAKE
-
-style:
-  semi: true
-  quotes: single
-  trailingComma: all
-  tabWidth: 2
+		const defaultConfig = `export default {
+	input: {
+		path: './openapi.yaml',
+	},
+	output: {
+		dir: './src/api',
+		clean: true,
+	},
+	plugins: [
+		'typescript-types',
+		'typescript-enums',
+	],
+};
 `;
 
 		await fs.promises.writeFile(configPath, defaultConfig, 'utf-8');

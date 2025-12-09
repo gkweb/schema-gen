@@ -5,8 +5,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { SchemaGenConfig } from './config';
-import { generate, type GeneratedFile, parseSpec } from './binding';
+import { parseSpec, native, type GeneratedFile } from './binding';
 import type { SchemaAst } from './types';
+import { loadPlugins } from './plugins/loader';
+import { PluginExecutor } from './plugins/executor';
+import type { PluginBinding } from '@schema-gen/plugin-sdk';
 
 /**
  * Generator instance for running code generation
@@ -37,6 +40,29 @@ export interface CreateGeneratorOptions {
 	config: SchemaGenConfig;
 	/** Base directory for resolving relative paths (defaults to process.cwd()) */
 	baseDir?: string;
+}
+
+/**
+ * Create a plugin binding that wraps the native Rust generators
+ */
+function createPluginBinding(): PluginBinding {
+	return {
+		generateTypes(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+			const astJson = JSON.stringify(ast);
+			const optionsJson = options ? JSON.stringify(options) : undefined;
+			return native.generateTypescriptTypes(astJson, optionsJson);
+		},
+		generateEnums(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+			const astJson = JSON.stringify(ast);
+			const optionsJson = options ? JSON.stringify(options) : undefined;
+			return native.generateTypescriptEnums(astJson, optionsJson);
+		},
+		generateConstants(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+			const astJson = JSON.stringify(ast);
+			const optionsJson = options ? JSON.stringify(options) : undefined;
+			return native.generateConstants(astJson, optionsJson);
+		},
+	};
 }
 
 /**
@@ -72,27 +98,29 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
 	// Parse the spec
 	const ast = parseSpec(specContent, format) as SchemaAst;
 
-	// Determine which generators to run
-	const generatorNames = config.plugins
-		.map((p) => (typeof p === 'string' ? p : p.name))
-		.filter((name) => isBuiltinGenerator(name));
+	// Load plugins
+	const plugins = await loadPlugins(config.plugins, baseDir);
+
+	// Create plugin binding
+	const binding = createPluginBinding();
+
+	// Determine output directory
+	const outputDir = path.resolve(baseDir, config.output.dir);
+
+	// Create executor
+	const executor = new PluginExecutor({
+		plugins,
+		outputDir,
+		configDir: baseDir,
+		binding,
+	});
 
 	const run = async (): Promise<GeneratedFile[]> => {
-		const files = generate(specContent, generatorNames, {
-			format,
-			typescript: config.style
-				? {
-						generateJsdoc: true,
-					}
-				: undefined,
-		});
-
-		return files;
+		const result = await executor.execute(ast);
+		return result.files;
 	};
 
 	const write = async (files: GeneratedFile[]): Promise<void> => {
-		const outputDir = path.resolve(baseDir, config.output.dir);
-
 		// Clean output directory if configured
 		if (config.output.clean) {
 			await fs.promises.rm(outputDir, { recursive: true, force: true });
@@ -122,11 +150,4 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
 			await write(files);
 		},
 	};
-}
-
-/**
- * Check if a plugin name is a built-in generator
- */
-function isBuiltinGenerator(name: string): boolean {
-	return ['typescript-types', 'typescript-enums', 'constants'].includes(name);
 }

@@ -35,6 +35,8 @@ export interface CreateGeneratorOptions {
 	format?: 'json' | 'yaml';
 	/** Configuration */
 	config: SchemaGenConfig;
+	/** Base directory for resolving relative paths (defaults to process.cwd()) */
+	baseDir?: string;
 }
 
 /**
@@ -46,12 +48,20 @@ export interface CreateGeneratorOptions {
 export async function createGenerator(options: CreateGeneratorOptions): Promise<Generator> {
 	const { config } = options;
 
+	// Determine base directory for resolving relative paths
+	// Priority: config.cwd > options.baseDir > process.cwd()
+	const baseDir = config.cwd
+		? path.resolve(config.cwd)
+		: options.baseDir
+			? path.resolve(options.baseDir)
+			: process.cwd();
+
 	// Load spec content
 	let specContent: string;
 	if (options.spec) {
 		specContent = options.spec;
 	} else {
-		const specPath = path.resolve(config.input.path);
+		const specPath = path.resolve(baseDir, config.input.path);
 		specContent = await fs.promises.readFile(specPath, 'utf-8');
 	}
 
@@ -67,48 +77,49 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
 		.map((p) => (typeof p === 'string' ? p : p.name))
 		.filter((name) => isBuiltinGenerator(name));
 
+	const run = async (): Promise<GeneratedFile[]> => {
+		const files = generate(specContent, generatorNames, {
+			format,
+			typescript: config.style
+				? {
+						generateJsdoc: true,
+					}
+				: undefined,
+		});
+
+		return files;
+	};
+
+	const write = async (files: GeneratedFile[]): Promise<void> => {
+		const outputDir = path.resolve(baseDir, config.output.dir);
+
+		// Clean output directory if configured
+		if (config.output.clean) {
+			await fs.promises.rm(outputDir, { recursive: true, force: true });
+		}
+
+		// Ensure output directory exists
+		await fs.promises.mkdir(outputDir, { recursive: true });
+
+		// Write each file
+		for (const file of files) {
+			const filePath = path.join(outputDir, file.path);
+			const fileDir = path.dirname(filePath);
+
+			await fs.promises.mkdir(fileDir, { recursive: true });
+			await fs.promises.writeFile(filePath, file.content, 'utf-8');
+
+			console.log(`Generated: ${file.path}`);
+		}
+	};
+
 	return {
 		ast,
-
-		async run(): Promise<GeneratedFile[]> {
-			const files = generate(specContent, generatorNames, {
-				format,
-				typescript: config.style
-					? {
-							generateJsdoc: true,
-						}
-					: undefined,
-			});
-
-			return files;
-		},
-
-		async write(files: GeneratedFile[]): Promise<void> {
-			const outputDir = path.resolve(config.output.dir);
-
-			// Clean output directory if configured
-			if (config.output.clean) {
-				await fs.promises.rm(outputDir, { recursive: true, force: true });
-			}
-
-			// Ensure output directory exists
-			await fs.promises.mkdir(outputDir, { recursive: true });
-
-			// Write each file
-			for (const file of files) {
-				const filePath = path.join(outputDir, file.path);
-				const fileDir = path.dirname(filePath);
-
-				await fs.promises.mkdir(fileDir, { recursive: true });
-				await fs.promises.writeFile(filePath, file.content, 'utf-8');
-
-				console.log(`Generated: ${file.path}`);
-			}
-		},
-
+		run,
+		write,
 		async generate(): Promise<void> {
-			const files = await this.run();
-			await this.write(files);
+			const files = await run();
+			await write(files);
 		},
 	};
 }

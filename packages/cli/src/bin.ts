@@ -40,15 +40,18 @@ cli
 		try {
 			// Load configuration
 			let config: SchemaGenConfig;
+			let configDir: string | undefined;
 
 			if (options.config) {
 				const result = await loadConfigFromFile(options.config);
 				config = result.config;
+				configDir = path.dirname(path.resolve(result.filepath));
 				console.log(pc.dim(`Using config: ${result.filepath}`));
 			} else {
 				const result = await loadConfig();
 				if (result) {
 					config = result.config;
+					configDir = path.dirname(path.resolve(result.filepath));
 					console.log(pc.dim(`Using config: ${result.filepath}`));
 				} else {
 					console.log(pc.yellow('No config file found, using defaults'));
@@ -76,8 +79,8 @@ cli
 				process.exit(1);
 			}
 
-			// Create generator
-			const generator = await createGenerator({ config });
+			// Create generator with config directory as base
+			const generator = await createGenerator({ config, baseDir: configDir });
 
 			console.log(pc.dim(`Input: ${config.input.path}`));
 			console.log(pc.dim(`Output: ${config.output.dir}`));
@@ -96,7 +99,9 @@ cli
 				console.log();
 				console.log(pc.dim('Watching for changes...'));
 
-				const specPath = path.resolve(config.input.path);
+				// Resolve spec path relative to config directory
+				const baseDir = configDir ?? process.cwd();
+				const specPath = path.resolve(baseDir, config.input.path);
 				let debounceTimer: NodeJS.Timeout | null = null;
 
 				fs.watch(specPath, async () => {
@@ -106,7 +111,7 @@ cli
 					debounceTimer = setTimeout(async () => {
 						console.log(pc.dim(`\nDetected change in ${config.input.path}`));
 						try {
-							const gen = await createGenerator({ config });
+							const gen = await createGenerator({ config, baseDir: configDir });
 							const start = performance.now();
 							await gen.generate();
 							console.log(pc.green(`✓ Regenerated in ${(performance.now() - start).toFixed(0)}ms`));

@@ -8,6 +8,9 @@ import { cosmiconfig } from 'cosmiconfig';
  * Schema-gen configuration
  */
 export interface SchemaGenConfig {
+	/** Working directory for resolving relative paths (defaults to config file directory) */
+	cwd?: string;
+
 	/** Input specification */
 	input: {
 		/** Path to OpenAPI spec (local file or URL) */

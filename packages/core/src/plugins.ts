@@ -36,108 +36,108 @@ import type { PluginConfig } from './config';
  * TypeScript types plugin configuration
  */
 export interface TypeScriptTypesConfig {
-	/**
-	 * Use `interface` instead of `type` for object types
-	 * @default false
-	 */
-	preferInterfaces?: boolean;
+  /**
+   * Use `interface` instead of `type` for object types
+   * @default false
+   */
+  preferInterfaces?: boolean;
 
-	/**
-	 * Add `readonly` modifier to all properties
-	 * @default false
-	 */
-	readonlyProperties?: boolean;
+  /**
+   * Add `readonly` modifier to all properties
+   * @default false
+   */
+  readonlyProperties?: boolean;
 
-	/**
-	 * Generate JSDoc comments from descriptions
-	 * @default true
-	 */
-	generateJsdoc?: boolean;
+  /**
+   * Generate JSDoc comments from descriptions
+   * @default true
+   */
+  generateJsdoc?: boolean;
 
-	/**
-	 * Export style for generated types
-	 * @default 'named'
-	 */
-	exportStyle?: 'named' | 'default';
+  /**
+   * Export style for generated types
+   * @default 'named'
+   */
+  exportStyle?: 'named' | 'default';
 
-	/**
-	 * Output file name
-	 * @default 'types.ts'
-	 */
-	fileName?: string;
+  /**
+   * Output file name
+   * @default 'types.ts'
+   */
+  fileName?: string;
 }
 
 /**
  * TypeScript enums plugin configuration
  */
 export interface TypeScriptEnumsConfig {
-	/**
-	 * Enum generation style
-	 * - 'enum': Standard TypeScript enum
-	 * - 'const-enum': Const enum (inlined at compile time)
-	 * - 'union': Union type with values object
-	 * @default 'enum'
-	 */
-	enumStyle?: 'enum' | 'const-enum' | 'union';
+  /**
+   * Enum generation style
+   * - 'enum': Standard TypeScript enum
+   * - 'const-enum': Const enum (inlined at compile time)
+   * - 'union': Union type with values object
+   * @default 'enum'
+   */
+  enumStyle?: 'enum' | 'const-enum' | 'union';
 
-	/**
-	 * Generate JSDoc comments from descriptions
-	 * @default true
-	 */
-	generateJsdoc?: boolean;
+  /**
+   * Generate JSDoc comments from descriptions
+   * @default true
+   */
+  generateJsdoc?: boolean;
 
-	/**
-	 * Output file name
-	 * @default 'enums.ts'
-	 */
-	fileName?: string;
+  /**
+   * Output file name
+   * @default 'enums.ts'
+   */
+  fileName?: string;
 }
 
 /**
  * Constants plugin configuration
  */
 export interface ConstantsConfig {
-	/**
-	 * Output file name
-	 * @default 'constants.ts'
-	 */
-	fileName?: string;
+  /**
+   * Output file name
+   * @default 'constants.ts'
+   */
+  fileName?: string;
 }
 
 /**
  * Request paths plugin configuration
  */
 export interface RequestPathsConfig {
-	/**
-	 * Suffix to append to function names
-	 * @default 'Path'
-	 */
-	suffix?: string;
+  /**
+   * Suffix to append to function names
+   * @default 'Path'
+   */
+  suffix?: string;
 
-	/**
-	 * Output file name
-	 * @default 'paths.ts'
-	 */
-	fileName?: string;
+  /**
+   * Output file name
+   * @default 'paths.ts'
+   */
+  fileName?: string;
 
-	/**
-	 * Include JSDoc comments with endpoint description
-	 * @default true
-	 */
-	includeJsDoc?: boolean;
+  /**
+   * Include JSDoc comments with endpoint description
+   * @default true
+   */
+  includeJsDoc?: boolean;
 }
 
 /**
  * Create a typed plugin configuration
  */
 function createPluginConfig<T extends Record<string, unknown>>(
-	name: string,
-	config?: T,
+  name: string,
+  config?: T,
 ): PluginConfig {
-	if (!config || Object.keys(config).length === 0) {
-		return name;
-	}
-	return { name, config };
+  if (!config || Object.keys(config).length === 0) {
+    return name;
+  }
+  return { name, config };
 }
 
 /**
@@ -152,7 +152,7 @@ function createPluginConfig<T extends Record<string, unknown>>(
  * ```
  */
 export function typescriptTypes(config?: TypeScriptTypesConfig): PluginConfig {
-	return createPluginConfig('typescript-types', config);
+  return createPluginConfig('typescript-types', config);
 }
 
 /**
@@ -167,7 +167,7 @@ export function typescriptTypes(config?: TypeScriptTypesConfig): PluginConfig {
  * ```
  */
 export function typescriptEnums(config?: TypeScriptEnumsConfig): PluginConfig {
-	return createPluginConfig('typescript-enums', config);
+  return createPluginConfig('typescript-enums', config);
 }
 
 /**
@@ -182,7 +182,7 @@ export function typescriptEnums(config?: TypeScriptEnumsConfig): PluginConfig {
  * ```
  */
 export function constants(config?: ConstantsConfig): PluginConfig {
-	return createPluginConfig('constants', config);
+  return createPluginConfig('constants', config);
 }
 
 /**
@@ -198,15 +198,15 @@ export function constants(config?: ConstantsConfig): PluginConfig {
  * ```
  */
 export function requestPaths(config?: RequestPathsConfig): PluginConfig {
-	return createPluginConfig('request-paths', config);
+  return createPluginConfig('request-paths', config);
 }
 
 /**
  * All built-in plugin helpers
  */
 export const plugins = {
-	typescriptTypes,
-	typescriptEnums,
-	constants,
-	requestPaths,
+  typescriptTypes,
+  typescriptEnums,
+  constants,
+  requestPaths,
 } as const;

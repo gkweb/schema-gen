@@ -8,13 +8,14 @@
  */
 
 import type { Plugin, PluginContext } from '@schema-gen/plugin-sdk';
-import type { PluginConfig } from '../config';
+import type { PluginConfig, PluginObject } from '../config';
 import * as path from 'node:path';
 
 // Built-in plugins
 import typescriptTypes from './builtins/typescript-types';
 import typescriptEnums from './builtins/typescript-enums';
 import constants from './builtins/constants';
+import requestPaths from './builtins/request-paths';
 
 /**
  * Map of built-in plugin names to their implementations
@@ -23,6 +24,7 @@ const BUILTIN_PLUGINS: Record<string, Plugin> = {
 	'typescript-types': typescriptTypes,
 	'typescript-enums': typescriptEnums,
 	constants: constants,
+	'request-paths': requestPaths,
 };
 
 /**
@@ -47,6 +49,15 @@ export async function loadPlugins(
 	const loaded: LoadedPlugin[] = [];
 
 	for (const config of configs) {
+		// Check if it's a plugin object passed directly
+		if (isPluginObject(config)) {
+			loaded.push({
+				plugin: config as unknown as Plugin,
+				config: {},
+			});
+			continue;
+		}
+
 		const { name, pluginConfig } = normalizePluginConfig(config);
 		const plugin = await loadPlugin(name, configDir);
 
@@ -57,6 +68,19 @@ export async function loadPlugins(
 	}
 
 	return loaded;
+}
+
+/**
+ * Check if a config entry is a plugin object (has id, name, version)
+ */
+function isPluginObject(config: PluginConfig): config is PluginObject {
+	if (typeof config !== 'object' || config === null) return false;
+	const obj = config as Record<string, unknown>;
+	return (
+		typeof obj.id === 'string' &&
+		typeof obj.name === 'string' &&
+		typeof obj.version === 'string'
+	);
 }
 
 /**

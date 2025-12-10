@@ -1,0 +1,56 @@
+{
+  "name": "@schema-gen/plugin-vue-query-v4",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vue Query v4 plugin for schema-gen - generates TanStack Vue Query composables",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@schema-gen/plugin-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/vue-query": "4.37.1",
+    "vue": ">=2.7.0 || >=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/vue-query": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "tsdown": "0.16.8",
+    "typescript": "5.7.2"
+  },
+  "keywords": [
+    "openapi",
+    "codegen",
+    "plugin",
+    "vue-query",
+    "tanstack-query",
+    "vue"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkweb/schema-gen"
+  }
+}

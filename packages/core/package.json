@@ -39,6 +39,9 @@
     "clean": "rm -rf dist *.node",
     "prepublishOnly": "pnpm build"
   },
+  "dependencies": {
+    "jiti": "2.4.1"
+  },
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",
     "@types/node": "22.10.0",

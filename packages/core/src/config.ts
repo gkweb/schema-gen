@@ -4,7 +4,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { createJiti } from 'jiti';
 
 /**
  * User-facing configuration options
@@ -159,6 +159,11 @@ export type SchemaGenConfig = UserConfig;
 
 /**
  * Plugin configuration
+ *
+ * Can be:
+ * - A string (built-in plugin name or npm package)
+ * - An object with name and optional config
+ * - A plugin object directly (for inline/imported plugins)
  */
 export type PluginConfig =
 	| string
@@ -166,7 +171,25 @@ export type PluginConfig =
 			name: string;
 			path?: string;
 			config?: Record<string, unknown>;
-	  };
+	  }
+	| PluginObject;
+
+/**
+ * Plugin object interface (matches @schema-gen/plugin-sdk Plugin type)
+ */
+export interface PluginObject {
+	id: string;
+	name: string;
+	version: string;
+	dependencies?: string[];
+	onStart?: (context: unknown) => void | Promise<void>;
+	onType?: (node: unknown, context: unknown) => unknown;
+	onEnum?: (node: unknown, context: unknown) => unknown;
+	onEndpoint?: (node: unknown, context: unknown) => unknown;
+	emit?: (context: unknown) => unknown[] | Promise<unknown[]>;
+	onFile?: (file: unknown, context: unknown) => unknown;
+	onEnd?: (context: unknown) => void | Promise<void>;
+}
 
 /**
  * Configuration search result
@@ -207,6 +230,9 @@ export async function loadConfig(searchFrom?: string): Promise<ConfigResult | nu
 /**
  * Load configuration from a specific file
  *
+ * Uses jiti to support TypeScript config files without requiring
+ * TypeScript to be installed or a separate compilation step.
+ *
  * @param filepath - Path to the configuration file
  * @returns The configuration
  */
@@ -217,26 +243,25 @@ export async function loadConfigFromFile(filepath: string): Promise<ConfigResult
 		throw new Error(`Config file not found: ${filepath}`);
 	}
 
-	// Use file:// URL for ESM import
-	const fileUrl = pathToFileURL(absolutePath).href;
-
 	try {
-		const module = await import(fileUrl);
-		const config = module.default ?? module;
+		// Create jiti instance for loading TypeScript/ESM/CJS files
+		const jiti = createJiti(absolutePath, {
+			// Prefer native ESM when possible
+			interopDefault: true,
+			// Enable TypeScript support
+			extensions: ['.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'],
+		});
+
+		const module = await jiti.import(absolutePath);
+		const config = (module as { default?: unknown }).default ?? module;
 
 		return {
 			config: config as SchemaGenConfig,
 			filepath: absolutePath,
 		};
 	} catch (error) {
-		// Provide helpful error for TypeScript files
-		if (absolutePath.endsWith('.ts') && error instanceof Error) {
-			throw new Error(
-				`Failed to load TypeScript config: ${filepath}\n` +
-					`Run with tsx: npx tsx node_modules/.bin/schema-gen generate\n` +
-					`Or use a .js config file instead.\n` +
-					`Original error: ${error.message}`,
-			);
+		if (error instanceof Error) {
+			throw new Error(`Failed to load config: ${filepath}\n${error.message}`);
 		}
 		throw error;
 	}

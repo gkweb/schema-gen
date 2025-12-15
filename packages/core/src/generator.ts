@@ -9,60 +9,106 @@ import { parseSpec, native, type GeneratedFile } from './binding';
 import type { SchemaAst } from './types';
 import { loadPlugins } from './plugins/loader';
 import { PluginExecutor } from './plugins/executor';
-import type { PluginBinding } from '@schema-gen/plugin-sdk';
+import type { PluginBinding, WrittenFile } from '@schema-gen/plugin-sdk';
 
 /**
  * Generator instance for running code generation
  */
 export interface Generator {
-	/** The loaded AST */
-	ast: SchemaAst;
+  /** The loaded AST */
+  ast: SchemaAst;
 
-	/** Run all configured generators */
-	run(): Promise<GeneratedFile[]>;
+  /** Run all configured generators */
+  run(): Promise<GeneratedFile[]>;
 
-	/** Write generated files to disk */
-	write(files: GeneratedFile[]): Promise<void>;
+  /** Write generated files to disk */
+  write(files: GeneratedFile[]): Promise<WrittenFile[]>;
 
-	/** Run and write in one step */
-	generate(): Promise<void>;
+  /** Run and write in one step (also runs onFinished hooks) */
+  generate(): Promise<void>;
 }
 
 /**
  * Options for creating a generator
  */
 export interface CreateGeneratorOptions {
-	/** OpenAPI spec content (alternative to config.input.path) */
-	spec?: string;
-	/** Spec format (auto-detected if not provided) */
-	format?: 'json' | 'yaml';
-	/** Configuration */
-	config: SchemaGenConfig;
-	/** Base directory for resolving relative paths (defaults to process.cwd()) */
-	baseDir?: string;
+  /** OpenAPI spec content (alternative to config.input.path) */
+  spec?: string;
+  /** Spec format (auto-detected if not provided) */
+  format?: 'json' | 'yaml';
+  /** Configuration */
+  config: SchemaGenConfig;
+  /** Base directory for resolving relative paths (defaults to process.cwd()) */
+  baseDir?: string;
 }
 
 /**
  * Create a plugin binding that wraps the native Rust generators
  */
 function createPluginBinding(): PluginBinding {
-	return {
-		generateTypes(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
-			const astJson = JSON.stringify(ast);
-			const optionsJson = options ? JSON.stringify(options) : undefined;
-			return native.generateTypescriptTypes(astJson, optionsJson);
-		},
-		generateEnums(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
-			const astJson = JSON.stringify(ast);
-			const optionsJson = options ? JSON.stringify(options) : undefined;
-			return native.generateTypescriptEnums(astJson, optionsJson);
-		},
-		generateConstants(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
-			const astJson = JSON.stringify(ast);
-			const optionsJson = options ? JSON.stringify(options) : undefined;
-			return native.generateConstants(astJson, optionsJson);
-		},
-	};
+  return {
+    generateTypes(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+      const astJson = JSON.stringify(ast);
+      const optionsJson = options ? JSON.stringify(options) : undefined;
+      return native.generateTypescriptTypes(astJson, optionsJson);
+    },
+    generateEnums(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+      const astJson = JSON.stringify(ast);
+      const optionsJson = options ? JSON.stringify(options) : undefined;
+      return native.generateTypescriptEnums(astJson, optionsJson);
+    },
+    generateConstants(ast: SchemaAst, options?: Record<string, unknown>): GeneratedFile[] {
+      const astJson = JSON.stringify(ast);
+      const optionsJson = options ? JSON.stringify(options) : undefined;
+      return native.generateConstants(astJson, optionsJson);
+    },
+  };
+}
+
+/**
+ * Load OpenAPI spec from file or URL
+ *
+ * @param config - The schema-gen configuration
+ * @param baseDir - Base directory for resolving relative paths
+ * @returns The spec content as a string
+ */
+async function loadSpec(config: SchemaGenConfig, baseDir: string): Promise<string> {
+  const inputPath = config.input.path;
+
+  // Check if URL
+  if (inputPath.startsWith('http://') || inputPath.startsWith('https://')) {
+    const httpOptions = config.input.parserOptions?.resolve?.http ?? {};
+    const headers = httpOptions.headers ?? {};
+    const timeout = httpOptions.timeout ?? 30000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      console.log(`Fetching schema from: ${inputPath}`);
+      const response = await fetch(inputPath, {
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch schema: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms: ${inputPath}`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // Local file
+  const specPath = path.resolve(baseDir, inputPath);
+  return fs.promises.readFile(specPath, 'utf-8');
 }
 
 /**
@@ -72,82 +118,100 @@ function createPluginBinding(): PluginBinding {
  * @returns A generator instance
  */
 export async function createGenerator(options: CreateGeneratorOptions): Promise<Generator> {
-	const { config } = options;
+  const { config } = options;
 
-	// Determine base directory for resolving relative paths
-	// Priority: config.cwd > options.baseDir > process.cwd()
-	const baseDir = config.cwd
-		? path.resolve(config.cwd)
-		: options.baseDir
-			? path.resolve(options.baseDir)
-			: process.cwd();
+  // Determine base directory for resolving relative paths
+  // Priority: config.cwd > options.baseDir > process.cwd()
+  const baseDir = config.cwd
+    ? path.resolve(config.cwd)
+    : options.baseDir
+      ? path.resolve(options.baseDir)
+      : process.cwd();
 
-	// Load spec content
-	let specContent: string;
-	if (options.spec) {
-		specContent = options.spec;
-	} else {
-		const specPath = path.resolve(baseDir, config.input.path);
-		specContent = await fs.promises.readFile(specPath, 'utf-8');
-	}
+  // Load spec content
+  let specContent: string;
+  if (options.spec) {
+    specContent = options.spec;
+  } else {
+    specContent = await loadSpec(config, baseDir);
+  }
 
-	// Detect format
-	const format =
-		options.format ?? (config.input.path.endsWith('.json') ? 'json' : 'yaml');
+  // Detect format
+  const format = options.format ?? (config.input.path.endsWith('.json') ? 'json' : 'yaml');
 
-	// Parse the spec
-	const ast = parseSpec(specContent, format) as SchemaAst;
+  // Parse the spec
+  const ast = parseSpec(specContent, format) as SchemaAst;
 
-	// Load plugins
-	const plugins = await loadPlugins(config.plugins, baseDir);
+  // Load plugins
+  const plugins = await loadPlugins(config.plugins, baseDir);
 
-	// Create plugin binding
-	const binding = createPluginBinding();
+  // Create plugin binding
+  const binding = createPluginBinding();
 
-	// Determine output directory
-	const outputDir = path.resolve(baseDir, config.output.dir);
+  // Determine output directory
+  const outputDir = path.resolve(baseDir, config.output.dir);
 
-	// Create executor
-	const executor = new PluginExecutor({
-		plugins,
-		outputDir,
-		configDir: baseDir,
-		binding,
-	});
+  // Determine types output directory (if configured)
+  const typesDir = config.output.types?.dir
+    ? path.resolve(outputDir, config.output.types.dir)
+    : undefined;
 
-	const run = async (): Promise<GeneratedFile[]> => {
-		const result = await executor.execute(ast);
-		return result.files;
-	};
+  // Create executor
+  const executor = new PluginExecutor({
+    plugins,
+    outputDir,
+    typesDir,
+    configDir: baseDir,
+    binding,
+  });
 
-	const write = async (files: GeneratedFile[]): Promise<void> => {
-		// Clean output directory if configured
-		if (config.output.clean) {
-			await fs.promises.rm(outputDir, { recursive: true, force: true });
-		}
+  const run = async (): Promise<GeneratedFile[]> => {
+    const result = await executor.execute(ast);
+    return result.files;
+  };
 
-		// Ensure output directory exists
-		await fs.promises.mkdir(outputDir, { recursive: true });
+  const write = async (files: GeneratedFile[]): Promise<WrittenFile[]> => {
+    // Clean output directory if configured
+    if (config.output.clean) {
+      await fs.promises.rm(outputDir, { recursive: true, force: true });
+    }
 
-		// Write each file
-		for (const file of files) {
-			const filePath = path.join(outputDir, file.path);
-			const fileDir = path.dirname(filePath);
+    // Ensure output directory exists
+    await fs.promises.mkdir(outputDir, { recursive: true });
 
-			await fs.promises.mkdir(fileDir, { recursive: true });
-			await fs.promises.writeFile(filePath, file.content, 'utf-8');
+    // Track written files for onFinished hook
+    const writtenFiles: WrittenFile[] = [];
 
-			console.log(`Generated: ${file.path}`);
-		}
-	};
+    // Write each file
+    for (const file of files) {
+      const filePath = path.join(outputDir, file.path);
+      const fileDir = path.dirname(filePath);
 
-	return {
-		ast,
-		run,
-		write,
-		async generate(): Promise<void> {
-			const files = await run();
-			await write(files);
-		},
-	};
+      await fs.promises.mkdir(fileDir, { recursive: true });
+      await fs.promises.writeFile(filePath, file.content, 'utf-8');
+
+      writtenFiles.push({
+        absolutePath: filePath,
+        relativePath: file.path,
+        content: file.content,
+      });
+
+      console.log(`Generated: ${file.path}`);
+    }
+
+    return writtenFiles;
+  };
+
+  return {
+    ast,
+    run,
+    write,
+    async generate(): Promise<void> {
+      const files = await run();
+      const writtenFiles = await write(files);
+
+      // Run onFinished hooks after files are written
+      await executor.runOnFinished(ast, writtenFiles);
+    },
+  };
 }

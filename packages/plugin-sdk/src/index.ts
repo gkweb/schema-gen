@@ -24,26 +24,26 @@
 
 // Re-export types from core
 export type {
-	SchemaAst,
-	ApiInfo,
-	ServerInfo,
-	TagNode,
-	TypeNode,
-	TypeKind,
-	PropertyNode,
-	TypeRef,
-	PrimitiveType,
-	EnumNode,
-	EnumVariant,
-	EndpointNode,
-	HttpMethod,
-	ParameterNode,
-	RequestBodyNode,
-	ResponseNode,
-	StatusCode,
-	MediaTypeContent,
-	HeaderNode,
-	SecurityRequirement,
+  SchemaAst,
+  ApiInfo,
+  ServerInfo,
+  TagNode,
+  TypeNode,
+  TypeKind,
+  PropertyNode,
+  TypeRef,
+  PrimitiveType,
+  EnumNode,
+  EnumVariant,
+  EndpointNode,
+  HttpMethod,
+  ParameterNode,
+  RequestBodyNode,
+  ResponseNode,
+  StatusCode,
+  MediaTypeContent,
+  HeaderNode,
+  SecurityRequirement,
 } from '@schema-gen/core';
 
 export type { GeneratedFile } from '@schema-gen/core';
@@ -52,128 +52,184 @@ export type { GeneratedFile } from '@schema-gen/core';
  * Plugin definition
  */
 export interface Plugin {
-	/** Unique plugin identifier */
-	id: string;
+  /** Unique plugin identifier */
+  id: string;
 
-	/** Plugin display name */
-	name: string;
+  /** Plugin display name */
+  name: string;
 
-	/** Plugin version */
-	version: string;
+  /** Plugin version */
+  version: string;
 
-	/** Dependencies on other plugins (for ordering) */
-	dependencies?: string[];
+  /** Dependencies on other plugins (for ordering) */
+  dependencies?: string[];
 
-	// Phase 1: Initialization
-	/** Called once before processing begins */
-	onStart?(context: PluginContext): void | Promise<void>;
+  // Phase 1: Initialization
+  /** Called once before processing begins */
+  onStart?(context: PluginContext): void | Promise<void>;
 
-	// Phase 2: AST Node Hooks (filter/modify)
-	/** Called for each type node. Return null to filter out, return modified node, or void to keep unchanged */
-	onType?(node: import('@schema-gen/core').TypeNode, context: PluginContext): import('@schema-gen/core').TypeNode | null | void;
+  // Phase 2: AST Node Hooks (filter/modify)
+  /** Called for each type node. Return null to filter out, return modified node, or void to keep unchanged */
+  onType?(
+    node: import('@schema-gen/core').TypeNode,
+    context: PluginContext,
+  ): import('@schema-gen/core').TypeNode | null | void;
 
-	/** Called for each enum node. Return null to filter out, return modified node, or void to keep unchanged */
-	onEnum?(node: import('@schema-gen/core').EnumNode, context: PluginContext): import('@schema-gen/core').EnumNode | null | void;
+  /** Called for each enum node. Return null to filter out, return modified node, or void to keep unchanged */
+  onEnum?(
+    node: import('@schema-gen/core').EnumNode,
+    context: PluginContext,
+  ): import('@schema-gen/core').EnumNode | null | void;
 
-	/** Called for each endpoint node. Return null to filter out, return modified node, or void to keep unchanged */
-	onEndpoint?(node: import('@schema-gen/core').EndpointNode, context: PluginContext): import('@schema-gen/core').EndpointNode | null | void;
+  /** Called for each endpoint node. Return null to filter out, return modified node, or void to keep unchanged */
+  onEndpoint?(
+    node: import('@schema-gen/core').EndpointNode,
+    context: PluginContext,
+  ): import('@schema-gen/core').EndpointNode | null | void;
 
-	// Phase 3: File Emission
-	/** Called once after all nodes processed, to emit files */
-	emit?(context: PluginContext): import('@schema-gen/core').GeneratedFile[] | Promise<import('@schema-gen/core').GeneratedFile[]>;
+  // Phase 3: File Emission
+  /** Called once after all nodes processed, to emit files */
+  emit?(
+    context: PluginContext,
+  ):
+    | import('@schema-gen/core').GeneratedFile[]
+    | Promise<import('@schema-gen/core').GeneratedFile[]>;
 
-	// Phase 4: File Post-processing
-	/** Called for each generated file. Return null to filter out, return modified file, or void to keep unchanged */
-	onFile?(file: import('@schema-gen/core').GeneratedFile, context: PluginContext): import('@schema-gen/core').GeneratedFile | null | void | Promise<import('@schema-gen/core').GeneratedFile | null | void>;
+  // Phase 4: File Post-processing
+  /** Called for each generated file. Return null to filter out, return modified file, or void to keep unchanged */
+  onFile?(
+    file: import('@schema-gen/core').GeneratedFile,
+    context: PluginContext,
+  ):
+    | import('@schema-gen/core').GeneratedFile
+    | null
+    | void
+    | Promise<import('@schema-gen/core').GeneratedFile | null | void>;
 
-	// Phase 5: Cleanup
-	/** Called once after all plugins have emitted */
-	onEnd?(context: PluginContext): void | Promise<void>;
+  // Phase 5: Cleanup
+  /** Called once after all plugins have emitted */
+  onEnd?(context: PluginContext): void | Promise<void>;
+
+  // Phase 6: Post-write (called after files are written to disk)
+  /** Called once after all files have been written to disk */
+  onFinished?(context: FinishedContext): void | Promise<void>;
 }
 
 /**
  * Rust binding interface for calling built-in generators
  */
 export interface PluginBinding {
-	/** Generate TypeScript types from AST */
-	generateTypes(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
+  /** Generate TypeScript types from AST */
+  generateTypes(
+    ast: import('@schema-gen/core').SchemaAst,
+    options?: Record<string, unknown>,
+  ): import('@schema-gen/core').GeneratedFile[];
 
-	/** Generate TypeScript enums from AST */
-	generateEnums(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
+  /** Generate TypeScript enums from AST */
+  generateEnums(
+    ast: import('@schema-gen/core').SchemaAst,
+    options?: Record<string, unknown>,
+  ): import('@schema-gen/core').GeneratedFile[];
 
-	/** Generate constants from AST */
-	generateConstants(ast: import('@schema-gen/core').SchemaAst, options?: Record<string, unknown>): import('@schema-gen/core').GeneratedFile[];
+  /** Generate constants from AST */
+  generateConstants(
+    ast: import('@schema-gen/core').SchemaAst,
+    options?: Record<string, unknown>,
+  ): import('@schema-gen/core').GeneratedFile[];
 }
 
 /**
  * Plugin context provided to all plugin hooks
  */
 export interface PluginContext {
-	/** Full AST (read-only after Phase 2) */
-	ast: import('@schema-gen/core').SchemaAst;
+  /** Full AST (read-only after Phase 2) */
+  ast: import('@schema-gen/core').SchemaAst;
 
-	/** Plugin configuration from user config */
-	config: Record<string, unknown>;
+  /** Plugin configuration from user config */
+  config: Record<string, unknown>;
 
-	/** Output directory */
-	outputDir: string;
+  /** Output directory */
+  outputDir: string;
 
-	/** Config file directory (for resolving relative paths) */
-	configDir: string;
+  /** Types output directory (if output.types.dir is configured) */
+  typesDir?: string;
 
-	/** Logger */
-	log: Logger;
+  /** Config file directory (for resolving relative paths) */
+  configDir: string;
 
-	/** Access to other plugins' shared state */
-	shared: Map<string, unknown>;
+  /** Logger */
+  log: Logger;
 
-	/** Helper utilities */
-	utils: PluginUtils;
+  /** Access to other plugins' shared state */
+  shared: Map<string, unknown>;
 
-	/** Rust binding access for calling built-in generators */
-	binding: PluginBinding;
+  /** Helper utilities */
+  utils: PluginUtils;
+
+  /** Rust binding access for calling built-in generators */
+  binding: PluginBinding;
+}
+
+/**
+ * Context provided to the onFinished hook
+ */
+export interface FinishedContext extends PluginContext {
+  /** Files that were written to disk */
+  files: WrittenFile[];
+}
+
+/**
+ * Information about a file that was written to disk
+ */
+export interface WrittenFile {
+  /** Absolute path to the written file */
+  absolutePath: string;
+  /** Relative path from output directory */
+  relativePath: string;
+  /** File content that was written */
+  content: string;
 }
 
 /**
  * Logger interface
  */
 export interface Logger {
-	debug(message: string): void;
-	info(message: string): void;
-	warn(message: string): void;
-	error(message: string): void;
+  debug(message: string): void;
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string): void;
 }
 
 /**
  * Plugin utility functions
  */
 export interface PluginUtils {
-	/** Convert string to PascalCase */
-	toPascalCase(s: string): string;
+  /** Convert string to PascalCase */
+  toPascalCase(s: string): string;
 
-	/** Convert string to camelCase */
-	toCamelCase(s: string): string;
+  /** Convert string to camelCase */
+  toCamelCase(s: string): string;
 
-	/** Convert string to SCREAMING_SNAKE_CASE */
-	toScreamingSnakeCase(s: string): string;
+  /** Convert string to SCREAMING_SNAKE_CASE */
+  toScreamingSnakeCase(s: string): string;
 
-	/** Convert string to snake_case */
-	toSnakeCase(s: string): string;
+  /** Convert string to snake_case */
+  toSnakeCase(s: string): string;
 
-	/** Convert string to kebab-case */
-	toKebabCase(s: string): string;
+  /** Convert string to kebab-case */
+  toKebabCase(s: string): string;
 
-	/** Resolve a TypeRef to its TypeScript string representation */
-	typeRefToString(ref: import('@schema-gen/core').TypeRef): string;
+  /** Resolve a TypeRef to its TypeScript string representation */
+  typeRefToString(ref: import('@schema-gen/core').TypeRef): string;
 
-	/** Get all endpoints for a tag */
-	getEndpointsByTag(tag: string): import('@schema-gen/core').EndpointNode[];
+  /** Get all endpoints for a tag */
+  getEndpointsByTag(tag: string): import('@schema-gen/core').EndpointNode[];
 
-	/** Check if an endpoint is a query (GET, HEAD, OPTIONS) */
-	isQuery(endpoint: import('@schema-gen/core').EndpointNode): boolean;
+  /** Check if an endpoint is a query (GET, HEAD, OPTIONS) */
+  isQuery(endpoint: import('@schema-gen/core').EndpointNode): boolean;
 
-	/** Check if an endpoint is a mutation (POST, PUT, PATCH, DELETE) */
-	isMutation(endpoint: import('@schema-gen/core').EndpointNode): boolean;
+  /** Check if an endpoint is a mutation (POST, PUT, PATCH, DELETE) */
+  isMutation(endpoint: import('@schema-gen/core').EndpointNode): boolean;
 }
 
 /**
@@ -183,132 +239,133 @@ export interface PluginUtils {
  * @returns The plugin definition (for type inference)
  */
 export function definePlugin(plugin: Plugin): Plugin {
-	return plugin;
+  return plugin;
 }
 
 /**
  * Create a plugin context (for testing)
  */
 export function createPluginContext(
-	ast: import('@schema-gen/core').SchemaAst,
-	options?: Partial<PluginContext>,
+  ast: import('@schema-gen/core').SchemaAst,
+  options?: Partial<PluginContext>,
 ): PluginContext {
-	return {
-		ast,
-		config: options?.config ?? {},
-		outputDir: options?.outputDir ?? './output',
-		configDir: options?.configDir ?? process.cwd(),
-		log: options?.log ?? createConsoleLogger(),
-		shared: options?.shared ?? new Map(),
-		utils: createPluginUtils(ast),
-		binding: options?.binding ?? createMockBinding(),
-	};
+  return {
+    ast,
+    config: options?.config ?? {},
+    outputDir: options?.outputDir ?? './output',
+    typesDir: options?.typesDir,
+    configDir: options?.configDir ?? process.cwd(),
+    log: options?.log ?? createConsoleLogger(),
+    shared: options?.shared ?? new Map(),
+    utils: createPluginUtils(ast),
+    binding: options?.binding ?? createMockBinding(),
+  };
 }
 
 /**
  * Create a mock binding (for testing)
  */
 function createMockBinding(): PluginBinding {
-	return {
-		generateTypes: () => [],
-		generateEnums: () => [],
-		generateConstants: () => [],
-	};
+  return {
+    generateTypes: () => [],
+    generateEnums: () => [],
+    generateConstants: () => [],
+  };
 }
 
 /**
  * Create a console logger
  */
 function createConsoleLogger(): Logger {
-	return {
-		debug: (msg) => console.debug(`[debug] ${msg}`),
-		info: (msg) => console.info(`[info] ${msg}`),
-		warn: (msg) => console.warn(`[warn] ${msg}`),
-		error: (msg) => console.error(`[error] ${msg}`),
-	};
+  return {
+    debug: (msg) => console.debug(`[debug] ${msg}`),
+    info: (msg) => console.info(`[info] ${msg}`),
+    warn: (msg) => console.warn(`[warn] ${msg}`),
+    error: (msg) => console.error(`[error] ${msg}`),
+  };
 }
 
 /**
  * Create plugin utilities
  */
 function createPluginUtils(ast: import('@schema-gen/core').SchemaAst): PluginUtils {
-	return {
-		toPascalCase(s: string): string {
-			return s
-				.split(/[-_\s.]+/)
-				.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-				.join('');
-		},
+  return {
+    toPascalCase(s: string): string {
+      return s
+        .split(/[-_\s.]+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('');
+    },
 
-		toCamelCase(s: string): string {
-			const pascal = this.toPascalCase(s);
-			return pascal.charAt(0).toLowerCase() + pascal.slice(1);
-		},
+    toCamelCase(s: string): string {
+      const pascal = this.toPascalCase(s);
+      return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+    },
 
-		toScreamingSnakeCase(s: string): string {
-			return this.toSnakeCase(s).toUpperCase();
-		},
+    toScreamingSnakeCase(s: string): string {
+      return this.toSnakeCase(s).toUpperCase();
+    },
 
-		toSnakeCase(s: string): string {
-			return s
-				.replace(/([A-Z])/g, '_$1')
-				.toLowerCase()
-				.replace(/^_/, '')
-				.replace(/[-\s.]+/g, '_');
-		},
+    toSnakeCase(s: string): string {
+      return s
+        .replace(/([A-Z])/g, '_$1')
+        .toLowerCase()
+        .replace(/^_/, '')
+        .replace(/[-\s.]+/g, '_');
+    },
 
-		toKebabCase(s: string): string {
-			return this.toSnakeCase(s).replace(/_/g, '-');
-		},
+    toKebabCase(s: string): string {
+      return this.toSnakeCase(s).replace(/_/g, '-');
+    },
 
-		typeRefToString(ref: import('@schema-gen/core').TypeRef): string {
-			switch (ref.kind) {
-				case 'named':
-					return ref.name;
-				case 'array':
-					return `${this.typeRefToString(ref.items)}[]`;
-				case 'primitive':
-					return primitiveToString(ref);
-				case 'enum':
-					return ref.name;
-				case 'unknown':
-					return 'unknown';
-				default:
-					return 'unknown';
-			}
-		},
+    typeRefToString(ref: import('@schema-gen/core').TypeRef): string {
+      switch (ref.kind) {
+        case 'named':
+          return ref.name;
+        case 'array':
+          return `${this.typeRefToString(ref.items)}[]`;
+        case 'primitive':
+          return primitiveToString(ref);
+        case 'enum':
+          return ref.name;
+        case 'unknown':
+          return 'unknown';
+        default:
+          return 'unknown';
+      }
+    },
 
-		getEndpointsByTag(tag: string): import('@schema-gen/core').EndpointNode[] {
-			return ast.endpoints.filter((e) => e.tags.includes(tag));
-		},
+    getEndpointsByTag(tag: string): import('@schema-gen/core').EndpointNode[] {
+      return ast.endpoints.filter((e) => e.tags.includes(tag));
+    },
 
-		isQuery(endpoint: import('@schema-gen/core').EndpointNode): boolean {
-			return endpoint.queryType === 'query';
-		},
+    isQuery(endpoint: import('@schema-gen/core').EndpointNode): boolean {
+      return endpoint.queryType === 'query';
+    },
 
-		isMutation(endpoint: import('@schema-gen/core').EndpointNode): boolean {
-			return endpoint.queryType === 'mutation';
-		},
-	};
+    isMutation(endpoint: import('@schema-gen/core').EndpointNode): boolean {
+      return endpoint.queryType === 'mutation';
+    },
+  };
 }
 
 /**
  * Convert a primitive type to its TypeScript string representation
  */
 function primitiveToString(prim: import('@schema-gen/core').PrimitiveType): string {
-	switch (prim.primitiveType) {
-		case 'string':
-			return 'string';
-		case 'number':
-		case 'integer':
-			return 'number';
-		case 'boolean':
-			return 'boolean';
-		case 'null':
-			return 'null';
-		case 'any':
-			return 'unknown';
-		default:
-			return 'unknown';
-	}
+  switch (prim.primitiveType) {
+    case 'string':
+      return 'string';
+    case 'number':
+    case 'integer':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'null':
+      return 'null';
+    case 'any':
+      return 'unknown';
+    default:
+      return 'unknown';
+  }
 }

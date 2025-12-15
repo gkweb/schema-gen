@@ -109,6 +109,10 @@ export interface Plugin {
   // Phase 5: Cleanup
   /** Called once after all plugins have emitted */
   onEnd?(context: PluginContext): void | Promise<void>;
+
+  // Phase 6: Post-write (called after files are written to disk)
+  /** Called once after all files have been written to disk */
+  onFinished?(context: FinishedContext): void | Promise<void>;
 }
 
 /**
@@ -147,6 +151,9 @@ export interface PluginContext {
   /** Output directory */
   outputDir: string;
 
+  /** Types output directory (if output.types.dir is configured) */
+  typesDir?: string;
+
   /** Config file directory (for resolving relative paths) */
   configDir: string;
 
@@ -161,6 +168,26 @@ export interface PluginContext {
 
   /** Rust binding access for calling built-in generators */
   binding: PluginBinding;
+}
+
+/**
+ * Context provided to the onFinished hook
+ */
+export interface FinishedContext extends PluginContext {
+  /** Files that were written to disk */
+  files: WrittenFile[];
+}
+
+/**
+ * Information about a file that was written to disk
+ */
+export interface WrittenFile {
+  /** Absolute path to the written file */
+  absolutePath: string;
+  /** Relative path from output directory */
+  relativePath: string;
+  /** File content that was written */
+  content: string;
 }
 
 /**
@@ -226,6 +253,7 @@ export function createPluginContext(
     ast,
     config: options?.config ?? {},
     outputDir: options?.outputDir ?? './output',
+    typesDir: options?.typesDir,
     configDir: options?.configDir ?? process.cwd(),
     log: options?.log ?? createConsoleLogger(),
     shared: options?.shared ?? new Map(),

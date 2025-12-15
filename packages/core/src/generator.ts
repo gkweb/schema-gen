@@ -9,7 +9,7 @@ import { parseSpec, native, type GeneratedFile } from './binding';
 import type { SchemaAst } from './types';
 import { loadPlugins } from './plugins/loader';
 import { PluginExecutor } from './plugins/executor';
-import type { PluginBinding } from '@schema-gen/plugin-sdk';
+import type { PluginBinding, WrittenFile } from '@schema-gen/plugin-sdk';
 
 /**
  * Generator instance for running code generation
@@ -22,9 +22,9 @@ export interface Generator {
   run(): Promise<GeneratedFile[]>;
 
   /** Write generated files to disk */
-  write(files: GeneratedFile[]): Promise<void>;
+  write(files: GeneratedFile[]): Promise<WrittenFile[]>;
 
-  /** Run and write in one step */
+  /** Run and write in one step (also runs onFinished hooks) */
   generate(): Promise<void>;
 }
 
@@ -66,6 +66,52 @@ function createPluginBinding(): PluginBinding {
 }
 
 /**
+ * Load OpenAPI spec from file or URL
+ *
+ * @param config - The schema-gen configuration
+ * @param baseDir - Base directory for resolving relative paths
+ * @returns The spec content as a string
+ */
+async function loadSpec(config: SchemaGenConfig, baseDir: string): Promise<string> {
+  const inputPath = config.input.path;
+
+  // Check if URL
+  if (inputPath.startsWith('http://') || inputPath.startsWith('https://')) {
+    const httpOptions = config.input.parserOptions?.resolve?.http ?? {};
+    const headers = httpOptions.headers ?? {};
+    const timeout = httpOptions.timeout ?? 30000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      console.log(`Fetching schema from: ${inputPath}`);
+      const response = await fetch(inputPath, {
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch schema: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms: ${inputPath}`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // Local file
+  const specPath = path.resolve(baseDir, inputPath);
+  return fs.promises.readFile(specPath, 'utf-8');
+}
+
+/**
  * Create a generator instance
  *
  * @param options - Generator options
@@ -87,8 +133,7 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
   if (options.spec) {
     specContent = options.spec;
   } else {
-    const specPath = path.resolve(baseDir, config.input.path);
-    specContent = await fs.promises.readFile(specPath, 'utf-8');
+    specContent = await loadSpec(config, baseDir);
   }
 
   // Detect format
@@ -106,10 +151,16 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
   // Determine output directory
   const outputDir = path.resolve(baseDir, config.output.dir);
 
+  // Determine types output directory (if configured)
+  const typesDir = config.output.types?.dir
+    ? path.resolve(outputDir, config.output.types.dir)
+    : undefined;
+
   // Create executor
   const executor = new PluginExecutor({
     plugins,
     outputDir,
+    typesDir,
     configDir: baseDir,
     binding,
   });
@@ -119,7 +170,7 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
     return result.files;
   };
 
-  const write = async (files: GeneratedFile[]): Promise<void> => {
+  const write = async (files: GeneratedFile[]): Promise<WrittenFile[]> => {
     // Clean output directory if configured
     if (config.output.clean) {
       await fs.promises.rm(outputDir, { recursive: true, force: true });
@@ -127,6 +178,9 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
 
     // Ensure output directory exists
     await fs.promises.mkdir(outputDir, { recursive: true });
+
+    // Track written files for onFinished hook
+    const writtenFiles: WrittenFile[] = [];
 
     // Write each file
     for (const file of files) {
@@ -136,8 +190,16 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
       await fs.promises.mkdir(fileDir, { recursive: true });
       await fs.promises.writeFile(filePath, file.content, 'utf-8');
 
+      writtenFiles.push({
+        absolutePath: filePath,
+        relativePath: file.path,
+        content: file.content,
+      });
+
       console.log(`Generated: ${file.path}`);
     }
+
+    return writtenFiles;
   };
 
   return {
@@ -146,7 +208,10 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
     write,
     async generate(): Promise<void> {
       const files = await run();
-      await write(files);
+      const writtenFiles = await write(files);
+
+      // Run onFinished hooks after files are written
+      await executor.runOnFinished(ast, writtenFiles);
     },
   };
 }

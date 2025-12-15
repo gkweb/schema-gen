@@ -7,6 +7,32 @@ import * as path from 'node:path';
 import { createJiti } from 'jiti';
 
 /**
+ * Parser options for schema resolution
+ */
+export interface ParserOptions {
+  /** Options for resolving external references */
+  resolve?: {
+    /** HTTP options for fetching remote schemas */
+    http?: {
+      /** HTTP headers to include when fetching remote schemas (e.g., Authorization) */
+      headers?: Record<string, string>;
+      /** Request timeout in milliseconds (default: 30000) */
+      timeout?: number;
+    };
+  };
+}
+
+/**
+ * Configuration for separate types output directory
+ */
+export interface TypesOutputConfig {
+  /** Directory path relative to output.dir */
+  dir: string;
+  /** Generate barrel file (index.ts) with re-exports (default: true) */
+  barrel?: boolean;
+}
+
+/**
  * User-facing configuration options
  *
  * This is the type users interact with in their config files.
@@ -21,6 +47,8 @@ export interface UserConfig {
     path: string;
     /** Validation strictness */
     validation?: 'strict' | 'warn' | 'off';
+    /** Parser options for schema resolution */
+    parserOptions?: ParserOptions;
   };
 
   /** Output configuration */
@@ -31,6 +59,8 @@ export interface UserConfig {
     structure?: 'flat' | 'by-tag' | 'by-endpoint';
     /** Clean output directory before generation */
     clean?: boolean;
+    /** Separate directory for type definitions */
+    types?: TypesOutputConfig;
   };
 
   /** Plugin configuration */

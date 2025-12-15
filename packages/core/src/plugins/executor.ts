@@ -7,6 +7,7 @@
  * 3. emit - File generation
  * 4. onFile - File post-processing
  * 5. onEnd - Cleanup
+ * 6. onFinished - Post-write (called after files written to disk, via runOnFinished)
  */
 
 import type {
@@ -15,6 +16,8 @@ import type {
   PluginBinding,
   Logger,
   PluginUtils,
+  FinishedContext,
+  WrittenFile,
 } from '@schema-gen/plugin-sdk';
 import type { SchemaAst, TypeNode, EnumNode, EndpointNode } from '../types';
 import type { GeneratedFile } from '../binding';
@@ -30,6 +33,9 @@ export interface PluginExecutorOptions {
 
   /** Output directory */
   outputDir: string;
+
+  /** Types output directory (if configured) */
+  typesDir?: string;
 
   /** Config file directory */
   configDir: string;
@@ -60,6 +66,7 @@ export interface PluginExecutorResult {
 export class PluginExecutor {
   private plugins: LoadedPlugin[];
   private outputDir: string;
+  private typesDir?: string;
   private configDir: string;
   private binding: PluginBinding;
   private logger: Logger;
@@ -68,6 +75,7 @@ export class PluginExecutor {
   constructor(options: PluginExecutorOptions) {
     this.plugins = options.plugins;
     this.outputDir = options.outputDir;
+    this.typesDir = options.typesDir;
     this.configDir = options.configDir;
     this.binding = options.binding;
     this.logger = options.logger ?? createLogger();
@@ -313,11 +321,39 @@ export class PluginExecutor {
       ast,
       config,
       outputDir: this.outputDir,
+      typesDir: this.typesDir,
       configDir: this.configDir,
       log: this.logger,
       shared: this.shared,
       utils: createPluginUtils(ast),
       binding: this.binding,
     };
+  }
+
+  /**
+   * Phase 6: Run onFinished hooks (after files are written to disk)
+   *
+   * This is called from outside the execute() method, after files have been
+   * written to disk by the generator.
+   */
+  async runOnFinished(ast: SchemaAst, writtenFiles: WrittenFile[]): Promise<void> {
+    for (const { plugin, config } of this.plugins) {
+      if (plugin.onFinished) {
+        const baseCtx = this.createContext(ast, config);
+        const ctx: FinishedContext = {
+          ...baseCtx,
+          files: writtenFiles,
+        };
+        this.logger.debug(`[${plugin.id}] Running onFinished`);
+
+        try {
+          await plugin.onFinished(ctx);
+        } catch (error) {
+          throw new Error(
+            `Plugin "${plugin.id}" onFinished failed: ${error instanceof Error ? error.message : error}`,
+          );
+        }
+      }
+    }
   }
 }

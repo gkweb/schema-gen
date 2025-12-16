@@ -81,6 +81,31 @@ importers:
         specifier: 5.7.2
         version: 5.7.2
 
+  packages/react-query-v5:
+    dependencies:
+      '@schema-gen/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@tanstack/react-query':
+        specifier: '>=5.0.0'
+        version: 5.90.12(react@19.2.3)
+      react:
+        specifier: '>=18.0.0'
+        version: 19.2.3
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.0
+        version: 22.10.0
+      tsdown:
+        specifier: 0.16.8
+        version: 0.16.8(typescript@5.7.2)
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+      vitest:
+        specifier: 2.1.6
+        version: 2.1.6(@types/node@22.10.0)(jiti@2.4.1)
+
   packages/vue-query-v4:
     dependencies:
       '@schema-gen/plugin-sdk':
@@ -568,6 +593,14 @@ packages:
   '@tanstack/query-core@4.36.1':
     resolution: {integrity: sha512-DJSilV5+ytBP1FbFcEJovv4rnnm/CokuVvrBEtW/Va9DvuJ3HksbXUJEpI0aV1KtuL4ZoO9AVE6PyNLzF7tLeA==}
 
+  '@tanstack/query-core@5.90.12':
+    resolution: {integrity: sha512-T1/8t5DhV/SisWjDnaiU2drl6ySvsHj1bHBCWNXd+/T+Hh1cf6JodyEYMd5sgwm+b/mETT4EV3H+zCVczCU5hg==}
+
+  '@tanstack/react-query@5.90.12':
+    resolution: {integrity: sha512-graRZspg7EoEaw0a8faiUASCyJrqjKPdqJ9EwuDRUF9mEYJ1YPczI9H+/agJ0mOJkPCJDk0lsz5QTrLZ/jQ2rg==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@tanstack/vue-query@4.37.1':
     resolution: {integrity: sha512-QzCQ94g2oZQcEfI4nfqa6Qr3aFXtXiEH17Jho+QFl73c7epqsWNcyP3ovF1fgJz5jEOE5OYtwgkoaRKIRaSigg==}
     peerDependencies:
@@ -815,6 +848,10 @@ packages:
 
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
+
+  react@19.2.3:
+    resolution: {integrity: sha512-Ku/hhYbVjOQnXDZFv2+RibmLFGwFdeeKHFcOTlrt7xplBnya5OGn/hIRDsqDiSUcfORsDC7MPxwork8jBwsIWA==}
+    engines: {node: '>=0.10.0'}
 
   readdirp@5.0.0:
     resolution: {integrity: sha512-9u/XQ1pvrQtYyMpZe7DXKv2p5CNvyVwzUB6uhLAnQwHMSgKMBR62lc7AHljaeteeHXn11XTAaLLUVZYVZyuRBQ==}
@@ -1336,6 +1373,13 @@ snapshots:
 
   '@tanstack/query-core@4.36.1': {}
 
+  '@tanstack/query-core@5.90.12': {}
+
+  '@tanstack/react-query@5.90.12(react@19.2.3)':
+    dependencies:
+      '@tanstack/query-core': 5.90.12
+      react: 19.2.3
+
   '@tanstack/vue-query@4.37.1(vue@3.5.25(typescript@5.7.2))':
     dependencies:
       '@tanstack/match-sorter-utils': 8.19.4
@@ -1596,6 +1640,8 @@ snapshots:
   prettier@3.4.2: {}
 
   quansync@0.2.11: {}
+
+  react@19.2.3: {}
 
   readdirp@5.0.0: {}
 

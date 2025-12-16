@@ -1,0 +1,35 @@
+{
+  "name": "@schema-gen/project-react-query",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Integration test project for @schema-gen/plugin-react-query-v5",
+  "scripts": {
+    "generate": "schema-gen generate",
+    "generate:watch": "schema-gen generate --watch",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@schema-gen/cli": "workspace:*",
+    "@schema-gen/core": "workspace:*",
+    "@schema-gen/plugin-react-query-v5": "workspace:*",
+    "@schema-gen/plugin-sdk": "workspace:*",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vitest": "^2.1.6"
+  }
+}

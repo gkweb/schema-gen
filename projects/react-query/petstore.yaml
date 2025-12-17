@@ -1,0 +1,886 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+  description: A comprehensive pet store API for testing schema-gen react-query plugin
+  license:
+    name: MIT
+servers:
+  - url: http://petstore.swagger.io/v1
+    description: Development server
+
+tags:
+  - name: pets
+    description: Pet management operations
+  - name: users
+    description: User account operations
+  - name: files
+    description: File upload operations
+  - name: health
+    description: Health check endpoints
+
+paths:
+  # ============================================================================
+  # Health Check - Simple query with no parameters
+  # ============================================================================
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      tags:
+        - health
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ============================================================================
+  # Pets - Various query and mutation patterns
+  # ============================================================================
+  /pets:
+    get:
+      operationId: listPets
+      summary: List all pets
+      description: Returns a paginated list of pets with optional filtering
+      tags:
+        - pets
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of pets to return
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of pets to skip
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          description: Filter by pet status
+          required: false
+          schema:
+            $ref: "#/components/schemas/PetStatus"
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: A paginated list of pets
+          headers:
+            x-next:
+              description: Link to next page of results
+              schema:
+                type: string
+            x-total-count:
+              description: Total number of pets
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PetList"
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      operationId: createPet
+      summary: Create a new pet
+      description: Creates a new pet in the store
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePetRequest"
+      responses:
+        "201":
+          description: Pet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      summary: Get a pet by ID
+      description: Returns a single pet by its ID
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          description: The ID of the pet to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Pet found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      operationId: updatePet
+      summary: Update a pet
+      description: Updates an existing pet's information
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          description: The ID of the pet to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePetRequest"
+      responses:
+        "200":
+          description: Pet updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    patch:
+      operationId: patchPet
+      summary: Partially update a pet
+      description: Partially updates an existing pet's information
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          description: The ID of the pet to patch
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchPetRequest"
+      responses:
+        "200":
+          description: Pet patched successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      operationId: deletePet
+      summary: Delete a pet
+      description: Deletes a pet from the store
+      tags:
+        - pets
+      parameters:
+        - name: petId
+          in: path
+          description: The ID of the pet to delete
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Pet deleted successfully
+        "404":
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /pets/{petId}/photo:
+    post:
+      operationId: uploadPetPhoto
+      summary: Upload a pet photo
+      description: Uploads a photo for a specific pet
+      tags:
+        - pets
+        - files
+      parameters:
+        - name: petId
+          in: path
+          description: The ID of the pet
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PhotoUploadRequest"
+      responses:
+        "201":
+          description: Photo uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoUploadResponse"
+        "400":
+          description: Invalid file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /pets/search:
+    post:
+      operationId: searchPets
+      summary: Search pets with complex criteria
+      description: Advanced search endpoint that acts as a query despite being POST
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PetSearchCriteria"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PetList"
+
+  /pets/bulk:
+    post:
+      operationId: createPetsBulk
+      summary: Create multiple pets
+      description: Creates multiple pets in a single request
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/CreatePetRequest"
+      responses:
+        "201":
+          description: Pets created successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+
+  # ============================================================================
+  # Users - Additional mutation patterns
+  # ============================================================================
+  /users:
+    get:
+      operationId: listUsers
+      summary: List all users
+      tags:
+        - users
+      parameters:
+        - name: role
+          in: query
+          description: Filter by user role
+          required: false
+          schema:
+            $ref: "#/components/schemas/UserRole"
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+    post:
+      operationId: createUser
+      summary: Create a new user
+      tags:
+        - users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      summary: Get a user by ID
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+    delete:
+      operationId: deleteUser
+      summary: Delete a user
+      tags:
+        - users
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: User deleted
+
+  /users/{userId}/pets:
+    get:
+      operationId: getUserPets
+      summary: Get pets owned by a user
+      description: Returns all pets owned by a specific user
+      tags:
+        - users
+        - pets
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PetStatus"
+      responses:
+        "200":
+          description: List of user's pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+
+  # ============================================================================
+  # Files - File upload patterns
+  # ============================================================================
+  /files/upload:
+    post:
+      operationId: uploadFile
+      summary: Upload a file
+      description: Generic file upload endpoint
+      tags:
+        - files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FileUploadRequest"
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+
+  /files/{fileId}:
+    get:
+      operationId: getFile
+      summary: Get file metadata
+      tags:
+        - files
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileMetadata"
+
+    delete:
+      operationId: deleteFile
+      summary: Delete a file
+      tags:
+        - files
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: File deleted
+
+components:
+  schemas:
+    # ============================================================================
+    # Health
+    # ============================================================================
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime:
+          type: integer
+          description: Uptime in seconds
+
+    # ============================================================================
+    # Pets
+    # ============================================================================
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+          maximum: 100
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+        owner:
+          $ref: "#/components/schemas/User"
+        photoUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PetStatus:
+      type: string
+      enum:
+        - available
+        - pending
+        - adopted
+        - fostered
+
+    PetList:
+      type: object
+      required:
+        - items
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Pet"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+    CreatePetRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+        ownerId:
+          type: integer
+          format: int64
+
+    UpdatePetRequest:
+      type: object
+      required:
+        - name
+        - status
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+
+    PatchPetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        species:
+          type: string
+        breed:
+          type: string
+        age:
+          type: integer
+          minimum: 0
+        status:
+          $ref: "#/components/schemas/PetStatus"
+        tags:
+          type: array
+          items:
+            type: string
+
+    PetSearchCriteria:
+      type: object
+      properties:
+        query:
+          type: string
+        species:
+          type: array
+          items:
+            type: string
+        status:
+          type: array
+          items:
+            $ref: "#/components/schemas/PetStatus"
+        ageRange:
+          type: object
+          properties:
+            min:
+              type: integer
+            max:
+              type: integer
+        tags:
+          type: array
+          items:
+            type: string
+
+    # ============================================================================
+    # Users
+    # ============================================================================
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - role
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+        avatar:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+
+    UserRole:
+      type: string
+      enum:
+        - admin
+        - staff
+        - customer
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    # ============================================================================
+    # Files
+    # ============================================================================
+    PhotoUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+        caption:
+          type: string
+          maxLength: 500
+
+    PhotoUploadResponse:
+      type: object
+      required:
+        - id
+        - url
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        thumbnailUrl:
+          type: string
+          format: uri
+
+    FileUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+        filename:
+          type: string
+        contentType:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    FileUploadResponse:
+      type: object
+      required:
+        - id
+        - url
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        size:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+
+    FileMetadata:
+      type: object
+      required:
+        - id
+        - filename
+        - size
+        - contentType
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        size:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    # ============================================================================
+    # Errors
+    # ============================================================================
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    ValidationError:
+      type: object
+      required:
+        - code
+        - message
+        - errors
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string

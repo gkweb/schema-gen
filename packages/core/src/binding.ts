@@ -32,6 +32,16 @@ export interface GeneratedFile {
   path: string;
   content: string;
   skipFormat: boolean;
+  /**
+   * Enum names referenced in this file.
+   * Useful for generating custom import statements in plugins.
+   */
+  referencedEnums?: string[];
+  /**
+   * Type names referenced in this file.
+   * Useful for generating custom import statements in plugins.
+   */
+  referencedTypes?: string[];
 }
 
 let nativeBinding: NativeBinding | null = null;

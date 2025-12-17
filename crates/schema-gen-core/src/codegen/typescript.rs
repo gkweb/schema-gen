@@ -32,6 +32,11 @@ pub struct TypeScriptOptions {
     /// Enum style: "enum", "const-enum", or "union"
     #[serde(default)]
     pub enum_style: EnumStyle,
+
+    /// Import path for enums (if separate from types).
+    /// When set, generates `import type { ... } from '<path>'` for referenced enums.
+    #[serde(default)]
+    pub enums_import_path: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -55,6 +60,19 @@ pub enum EnumStyle {
     Enum,
     ConstEnum,
     Union,
+}
+
+use std::collections::HashSet;
+
+/// Context for tracking type references during generation
+#[derive(Default)]
+struct GenerationContext {
+    /// Enum names that have been referenced
+    referenced_enums: HashSet<String>,
+    /// Type names that have been referenced
+    referenced_types: HashSet<String>,
+    /// Known enum names in the AST (for distinguishing enums from types)
+    known_enums: HashSet<String>,
 }
 
 /// TypeScript code generator
@@ -82,6 +100,8 @@ impl TypeScriptGenerator {
             path: "enums.ts".to_string(),
             content: output,
             skip_format: false,
+            referenced_enums: Vec::new(),
+            referenced_types: Vec::new(),
         }])
     }
 
@@ -122,6 +142,8 @@ impl TypeScriptGenerator {
             path: "constants.ts".to_string(),
             content: output,
             skip_format: false,
+            referenced_enums: Vec::new(),
+            referenced_types: Vec::new(),
         }])
     }
 
@@ -194,6 +216,15 @@ impl TypeScriptGenerator {
 
     /// Generate a single type
     fn generate_type(&self, type_node: &TypeNode) -> String {
+        self.generate_type_with_ctx(type_node, None)
+    }
+
+    /// Generate a single type with optional context for tracking references
+    fn generate_type_with_ctx(
+        &self,
+        type_node: &TypeNode,
+        mut ctx: Option<&mut GenerationContext>,
+    ) -> String {
         let mut output = String::new();
 
         // JSDoc comment
@@ -210,7 +241,7 @@ impl TypeScriptGenerator {
             TypeKind::Object { properties, .. } if self.options.prefer_interfaces => {
                 output.push_str(&format!("export interface {} {{\n", type_node.name));
                 for prop in properties {
-                    output.push_str(&self.generate_property(prop));
+                    output.push_str(&self.generate_property_with_ctx(prop, ctx.as_deref_mut()));
                 }
                 output.push_str("}");
             }
@@ -218,7 +249,7 @@ impl TypeScriptGenerator {
                 output.push_str(&format!(
                     "export type {} = {};",
                     type_node.name,
-                    self.type_kind_to_string(&type_node.kind)
+                    self.type_kind_to_string_with_ctx(&type_node.kind, ctx)
                 ));
             }
         }
@@ -228,6 +259,15 @@ impl TypeScriptGenerator {
 
     /// Generate a property
     fn generate_property(&self, prop: &PropertyNode) -> String {
+        self.generate_property_with_ctx(prop, None)
+    }
+
+    /// Generate a property with optional context for tracking references
+    fn generate_property_with_ctx(
+        &self,
+        prop: &PropertyNode,
+        ctx: Option<&mut GenerationContext>,
+    ) -> String {
         let mut output = String::new();
 
         // JSDoc for property
@@ -244,7 +284,7 @@ impl TypeScriptGenerator {
         };
 
         let optional = if !prop.required { "?" } else { "" };
-        let type_str = self.type_ref_to_string(&prop.type_ref);
+        let type_str = self.type_ref_to_string_with_ctx(&prop.type_ref, ctx);
 
         output.push_str(&format!(
             "  {}{}{}: {};\n",
@@ -256,47 +296,97 @@ impl TypeScriptGenerator {
 
     /// Convert TypeKind to TypeScript string
     fn type_kind_to_string(&self, kind: &TypeKind) -> String {
+        self.type_kind_to_string_with_ctx(kind, None)
+    }
+
+    /// Convert TypeKind to TypeScript string with optional context for tracking references
+    fn type_kind_to_string_with_ctx(
+        &self,
+        kind: &TypeKind,
+        mut ctx: Option<&mut GenerationContext>,
+    ) -> String {
         match kind {
             TypeKind::Object { properties, .. } => {
                 let props: Vec<String> = properties
                     .iter()
                     .map(|p| {
                         let optional = if !p.required { "?" } else { "" };
+                        // Note: We can't pass ctx here due to borrow checker, but object literals
+                        // in type definitions shouldn't need tracking (they're inline)
                         format!("{}{}: {}", p.name, optional, self.type_ref_to_string(&p.type_ref))
                     })
                     .collect();
                 format!("{{ {} }}", props.join("; "))
             }
             TypeKind::Array { items } => {
-                format!("{}[]", self.type_ref_to_string(items))
+                format!("{}[]", self.type_ref_to_string_with_ctx(items, ctx))
             }
             TypeKind::Union { variants, .. } => {
                 let types: Vec<String> = variants
                     .iter()
-                    .map(|v| self.type_ref_to_string(v))
+                    .map(|v| {
+                        // We need to reborrow ctx for each variant
+                        self.type_ref_to_string_with_ctx(v, ctx.as_deref_mut())
+                    })
                     .collect();
                 types.join(" | ")
             }
             TypeKind::Intersection { parts } => {
                 let types: Vec<String> = parts
                     .iter()
-                    .map(|p| self.type_ref_to_string(p))
+                    .map(|p| self.type_ref_to_string_with_ctx(p, ctx.as_deref_mut()))
                     .collect();
                 types.join(" & ")
             }
             TypeKind::Primitive(p) => self.primitive_to_string(p),
-            TypeKind::Reference { target } => target.clone(),
+            TypeKind::Reference { target } => {
+                // References to other types should be tracked
+                if let Some(ctx) = ctx {
+                    if ctx.known_enums.contains(target) {
+                        ctx.referenced_enums.insert(target.clone());
+                    } else {
+                        ctx.referenced_types.insert(target.clone());
+                    }
+                }
+                target.clone()
+            }
         }
     }
 
     /// Convert TypeRef to TypeScript string
     fn type_ref_to_string(&self, type_ref: &TypeRef) -> String {
+        self.type_ref_to_string_with_ctx(type_ref, None)
+    }
+
+    /// Convert TypeRef to TypeScript string with optional context for tracking references
+    fn type_ref_to_string_with_ctx(
+        &self,
+        type_ref: &TypeRef,
+        ctx: Option<&mut GenerationContext>,
+    ) -> String {
         match type_ref {
-            TypeRef::Named { name, .. } => name.clone(),
-            TypeRef::Inline(node) => self.type_kind_to_string(&node.kind),
-            TypeRef::Array { items } => format!("{}[]", self.type_ref_to_string(items)),
+            TypeRef::Named { name, .. } => {
+                if let Some(ctx) = ctx {
+                    // Check if this named type is actually an enum
+                    if ctx.known_enums.contains(name) {
+                        ctx.referenced_enums.insert(name.clone());
+                    } else {
+                        ctx.referenced_types.insert(name.clone());
+                    }
+                }
+                name.clone()
+            }
+            TypeRef::Inline(node) => self.type_kind_to_string_with_ctx(&node.kind, ctx),
+            TypeRef::Array { items } => {
+                format!("{}[]", self.type_ref_to_string_with_ctx(items, ctx))
+            }
             TypeRef::Primitive(p) => self.primitive_to_string(p),
-            TypeRef::Enum { name, .. } => name.clone(),
+            TypeRef::Enum { name, .. } => {
+                if let Some(ctx) = ctx {
+                    ctx.referenced_enums.insert(name.clone());
+                }
+                name.clone()
+            }
             TypeRef::Unknown => "unknown".to_string(),
         }
     }
@@ -327,19 +417,53 @@ impl TypeScriptGenerator {
 
 impl Generator for TypeScriptGenerator {
     fn generate(&self, ast: &SchemaAst) -> Result<Vec<GeneratedFile>> {
+        // Initialize context with known enums from the AST
+        let mut ctx = GenerationContext {
+            known_enums: ast.enums.keys().cloned().collect(),
+            ..Default::default()
+        };
+
         let mut output = String::new();
         output.push_str("// Generated by schema-gen - DO NOT EDIT\n\n");
 
-        // Generate types
+        // Generate types with reference tracking
         for type_node in ast.types.values() {
-            output.push_str(&self.generate_type(type_node));
+            output.push_str(&self.generate_type_with_ctx(type_node, Some(&mut ctx)));
             output.push_str("\n\n");
         }
 
+        // Generate import statement if enumsImportPath is configured and enums are referenced
+        let final_content = if let Some(ref import_path) = self.options.enums_import_path {
+            if !ctx.referenced_enums.is_empty() {
+                let mut sorted_enums: Vec<_> = ctx.referenced_enums.iter().cloned().collect();
+                sorted_enums.sort();
+                let import_statement = format!(
+                    "import type {{ {} }} from '{}';\n\n",
+                    sorted_enums.join(", "),
+                    import_path
+                );
+                // Insert import after the header comment
+                let header = "// Generated by schema-gen - DO NOT EDIT\n\n";
+                format!("{}{}{}", header, import_statement, &output[header.len()..])
+            } else {
+                output
+            }
+        } else {
+            output
+        };
+
+        // Convert HashSets to sorted Vecs for the metadata
+        let mut referenced_enums: Vec<_> = ctx.referenced_enums.into_iter().collect();
+        referenced_enums.sort();
+        let mut referenced_types: Vec<_> = ctx.referenced_types.into_iter().collect();
+        referenced_types.sort();
+
         Ok(vec![GeneratedFile {
             path: "types.ts".to_string(),
-            content: output,
+            content: final_content,
             skip_format: false,
+            referenced_enums,
+            referenced_types,
         }])
     }
 }

@@ -25,7 +25,11 @@ export default defineConfig({
   },
   plugins: [
     // Generate TypeScript interfaces for all schemas
-    plugins.typescriptTypes({ preferInterfaces: true }),
+    plugins.typescriptTypes({
+      preferInterfaces: true,
+      // Import enums from the separate enums.ts file
+      enumsImportPath: './enums',
+    }),
 
     // Generate TypeScript enums for OpenAPI enums
     plugins.typescriptEnums(),

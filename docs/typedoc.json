@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "../packages/core/src/index.ts",
+    "../packages/plugin-sdk/src/index.ts"
+  ],
+  "out": "./api/generated",
+  "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+  "skipErrorChecking": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "includeVersion": true,
+  "readme": "none",
+  "hideGenerator": true
+}

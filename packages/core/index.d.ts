@@ -6,11 +6,11 @@
 /** Generated file result */
 export interface GeneratedFile {
   /** Relative path for the file */
-  path: string;
+  path: string
   /** File contents */
-  content: string;
+  content: string
   /** Whether to skip formatting */
-  skipFormat: boolean;
+  skipFormat: boolean
 }
 /**
  * Parse an OpenAPI specification and return the AST as JSON
@@ -19,7 +19,7 @@ export interface GeneratedFile {
  * @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
  * @returns The AST as a JSON string
  */
-export declare function parseSpecToAst(content: string, format?: string | undefined | null): string;
+export declare function parseSpecToAst(content: string, format?: string | undefined | null): string
 /**
  * Parse an OpenAPI specification and return the AST as a JavaScript object
  *
@@ -27,10 +27,7 @@ export declare function parseSpecToAst(content: string, format?: string | undefi
  * @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
  * @returns The AST as a JavaScript object
  */
-export declare function parseSpecToObject(
-  content: string,
-  format?: string | undefined | null,
-): SchemaAst;
+export declare function parseSpecToObject(content: string, format?: string | undefined | null): SchemaAst
 /**
  * Validate an OpenAPI specification
  *
@@ -38,7 +35,7 @@ export declare function parseSpecToObject(
  * @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
  * @returns True if valid, throws an error if invalid
  */
-export declare function validateSpec(content: string, format?: string | undefined | null): boolean;
+export declare function validateSpec(content: string, format?: string | undefined | null): boolean
 /**
  * Generate TypeScript types from an AST
  *
@@ -46,10 +43,7 @@ export declare function validateSpec(content: string, format?: string | undefine
  * @param options - Generation options as a JSON string
  * @returns Array of generated files
  */
-export declare function generateTypescriptTypes(
-  astJson: string,
-  options?: string | undefined | null,
-): Array<GeneratedFile>;
+export declare function generateTypescriptTypes(astJson: string, options?: string | undefined | null): Array<GeneratedFile>
 /**
  * Generate TypeScript enums from an AST
  *
@@ -57,10 +51,7 @@ export declare function generateTypescriptTypes(
  * @param options - Generation options as a JSON string
  * @returns Array of generated files
  */
-export declare function generateTypescriptEnums(
-  astJson: string,
-  options?: string | undefined | null,
-): Array<GeneratedFile>;
+export declare function generateTypescriptEnums(astJson: string, options?: string | undefined | null): Array<GeneratedFile>
 /**
  * Generate constants from an AST
  *
@@ -68,12 +59,9 @@ export declare function generateTypescriptEnums(
  * @param options - Generation options as a JSON string
  * @returns Array of generated files
  */
-export declare function generateConstants(
-  astJson: string,
-  options?: string | undefined | null,
-): Array<GeneratedFile>;
+export declare function generateConstants(astJson: string, options?: string | undefined | null): Array<GeneratedFile>
 /** Get the schema-gen version */
-export declare function getVersion(): string;
+export declare function getVersion(): string
 /**
  * Full generation pipeline: parse spec → transform → generate
  *
@@ -83,9 +71,4 @@ export declare function getVersion(): string;
  * @param options - Generation options as a JSON string
  * @returns Array of generated files
  */
-export declare function generate(
-  content: string,
-  format: string | undefined | null,
-  generators: Array<string>,
-  options?: string | undefined | null,
-): Array<GeneratedFile>;
+export declare function generate(content: string, format: string | undefined | null, generators: Array<string>, options?: string | undefined | null): Array<GeneratedFile>

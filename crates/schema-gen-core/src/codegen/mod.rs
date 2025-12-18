@@ -22,6 +22,12 @@ pub struct GeneratedFile {
     /// Whether to skip formatting
     #[serde(default)]
     pub skip_format: bool,
+    /// Enum names referenced in this file (for import generation)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub referenced_enums: Vec<String>,
+    /// Type names referenced in this file (for import generation)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub referenced_types: Vec<String>,
 }
 
 /// Code generator trait

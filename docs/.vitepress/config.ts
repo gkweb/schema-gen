@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
+  base: process.env.BASE_URL || '/',
   title: 'schema-gen',
   description:
     'High-performance OpenAPI to TypeScript/React Query/Vue Query code generation, powered by Rust',

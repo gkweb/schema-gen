@@ -40,6 +40,8 @@ jobs:
 
       - name: Build docs
         run: pnpm docs:build
+        env:
+          BASE_URL: /schema-gen/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

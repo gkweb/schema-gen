@@ -49,16 +49,6 @@
     "typescript": "5.7.2",
     "vitest": "2.1.6"
   },
-  "optionalDependencies": {
-    "@schema-gen/binding-darwin-arm64": "0.1.0",
-    "@schema-gen/binding-darwin-x64": "0.1.0",
-    "@schema-gen/binding-linux-arm64-gnu": "0.1.0",
-    "@schema-gen/binding-linux-arm64-musl": "0.1.0",
-    "@schema-gen/binding-linux-x64-gnu": "0.1.0",
-    "@schema-gen/binding-linux-x64-musl": "0.1.0",
-    "@schema-gen/binding-win32-arm64-msvc": "0.1.0",
-    "@schema-gen/binding-win32-x64-msvc": "0.1.0"
-  },
   "engines": {
     "node": ">=18.0.0"
   },

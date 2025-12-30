@@ -73,19 +73,9 @@ export default defineConfig({
 
       // Per-operation overrides
       overrides: {
-        // Force POST /pets/search to be a query (it's a search endpoint)
-        searchPets: {
-          forceQuery: true,
-        },
-
         // Example: Override error type for specific operation
-        // createPet: {
+        // addPet: {
         //   errorType: 'ApiError',
-        // },
-
-        // Example: Skip generating a specific operation
-        // deleteUser: {
-        //   skip: true,
         // },
       },
     }),

@@ -3,7 +3,7 @@
  * Pet Detail View
  *
  * Demonstrates:
- * - useGetPet query with path parameter (petId from route)
+ * - useGetPetById query with path parameter
  * - useDeletePet mutation
  * - Query invalidation after mutation
  * - Navigation after delete
@@ -12,8 +12,7 @@
 import { computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useGetPet, useDeletePet, getGetPetQueryKey } from '../api/queries';
-import { PetStatus } from '../api/enums';
+import { useGetPetById, useDeletePet, getGetPetByIdQueryKey } from '../api/queries';
 
 const props = defineProps<{
   id: string;
@@ -22,9 +21,9 @@ const props = defineProps<{
 const router = useRouter();
 const queryClient = useQueryClient();
 
-// Demonstrates useGetPet with path parameter from route
-const params = computed(() => ({ petId: props.id }));
-const { data: pet, isLoading, error } = useGetPet(params);
+// Demonstrates useGetPetById with path parameter from route
+const params = computed(() => ({ petId: parseInt(props.id, 10) }));
+const { data: pet, isLoading, error } = useGetPetById(params);
 
 // Demonstrates useDeletePet mutation
 const deletePet = useDeletePet({
@@ -33,14 +32,14 @@ const deletePet = useDeletePet({
 
     // Remove from cache
     queryClient.removeQueries({
-      queryKey: getGetPetQueryKey({ petId: props.id }),
+      queryKey: getGetPetByIdQueryKey({ petId: parseInt(props.id, 10) }),
     });
 
     // Invalidate list queries
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey as string[];
-        return key[0] === 'listPets';
+        return key[0] === 'findPetsByStatus';
       },
     });
 
@@ -51,31 +50,21 @@ const deletePet = useDeletePet({
 
 function handleDelete() {
   if (confirm('Are you sure you want to delete this pet?')) {
-    deletePet.mutate({ petId: props.id });
+    deletePet.mutate({ petId: parseInt(props.id, 10) });
   }
 }
 
-function getStatusColor(status: PetStatus): string {
+function getStatusColor(status: string | undefined): string {
   switch (status) {
     case 'available':
       return '#4caf50';
     case 'pending':
       return '#ff9800';
-    case 'adopted':
+    case 'sold':
       return '#2196f3';
-    case 'fostered':
-      return '#9c27b0';
     default:
       return '#9e9e9e';
   }
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 }
 </script>
 
@@ -126,51 +115,52 @@ function formatDate(dateString: string): string {
 
       <div class="card">
         <div class="info-grid">
-          <div v-if="pet.species" class="info-item">
-            <label>Species</label>
-            <span>{{ pet.species }}</span>
+          <div class="info-item">
+            <label>ID</label>
+            <span>{{ pet.id }}</span>
           </div>
 
-          <div v-if="pet.breed" class="info-item">
-            <label>Breed</label>
-            <span>{{ pet.breed }}</span>
+          <div class="info-item">
+            <label>Name</label>
+            <span>{{ pet.name }}</span>
           </div>
 
-          <div v-if="pet.age !== undefined" class="info-item">
-            <label>Age</label>
-            <span>{{ pet.age }} years</span>
+          <div v-if="pet.category" class="info-item">
+            <label>Category</label>
+            <span>{{ pet.category.name }}</span>
           </div>
 
-          <div v-if="pet.tags && pet.tags.length > 0" class="info-item">
+          <div class="info-item">
+            <label>Status</label>
+            <span
+              class="status-badge"
+              :style="{ backgroundColor: getStatusColor(pet.status) }"
+            >
+              {{ pet.status }}
+            </span>
+          </div>
+
+          <div v-if="pet.tags && pet.tags.length > 0" class="info-item full-width">
             <label>Tags</label>
             <div class="tags">
-              <span v-for="tag in pet.tags" :key="tag" class="tag">
-                {{ tag }}
+              <span v-for="tag in pet.tags" :key="tag.id" class="tag">
+                {{ tag.name }}
               </span>
             </div>
           </div>
-
-          <div v-if="pet.owner" class="info-item">
-            <label>Owner</label>
-            <RouterLink :to="`/users/${pet.owner.id}`">
-              {{ pet.owner.name || pet.owner.email }}
-            </RouterLink>
-          </div>
-
-          <div v-if="pet.createdAt" class="info-item">
-            <label>Created</label>
-            <span>{{ formatDate(pet.createdAt) }}</span>
-          </div>
-
-          <div v-if="pet.updatedAt" class="info-item">
-            <label>Updated</label>
-            <span>{{ formatDate(pet.updatedAt) }}</span>
-          </div>
         </div>
 
-        <div v-if="pet.photoUrl" class="photo-section">
-          <label>Photo</label>
-          <img :src="pet.photoUrl" :alt="pet.name" class="pet-photo" />
+        <div v-if="pet.photoUrls && pet.photoUrls.length > 0" class="photo-section">
+          <label>Photos</label>
+          <div class="photo-grid">
+            <img
+              v-for="(url, index) in pet.photoUrls"
+              :key="index"
+              :src="url"
+              :alt="`${pet.name} photo ${index + 1}`"
+              class="pet-photo"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -283,6 +273,10 @@ function formatDate(dateString: string): string {
   gap: 5px;
 }
 
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
 .info-item label {
   font-size: 0.85rem;
   color: #666;
@@ -324,10 +318,17 @@ function formatDate(dateString: string): string {
   margin-bottom: 10px;
 }
 
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+
 .pet-photo {
-  max-width: 100%;
-  max-height: 400px;
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 8px;
   object-fit: cover;
+  border: 1px solid #eee;
 }
 </style>

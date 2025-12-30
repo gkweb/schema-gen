@@ -3,7 +3,7 @@
  * Pet Edit View
  *
  * Demonstrates:
- * - useGetPet query to load existing data
+ * - useGetPetById query to load existing data
  * - useUpdatePet mutation
  * - Populating form with query data
  * - Cache invalidation and update after mutation
@@ -12,8 +12,9 @@
 import { ref, watch, computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useGetPet, useUpdatePet, getGetPetQueryKey } from '../api/queries';
-import { PetStatus } from '../api/enums';
+import { useGetPetById, useUpdatePet, getGetPetByIdQueryKey } from '../api/queries';
+
+type PetStatus = 'available' | 'pending' | 'sold';
 
 const props = defineProps<{
   id: string;
@@ -23,24 +24,23 @@ const router = useRouter();
 const queryClient = useQueryClient();
 
 // Load existing pet data
-const params = computed(() => ({ petId: props.id }));
-const { data: pet, isLoading, error } = useGetPet(params);
+const params = computed(() => ({ petId: parseInt(props.id, 10) }));
+const { data: pet, isLoading, error } = useGetPetById(params);
 
 // Form state - will be populated when pet data loads
 const name = ref('');
-const species = ref('');
-const breed = ref('');
-const age = ref<number | ''>('');
-const status = ref<PetStatus>(PetStatus.AVAILABLE);
+const category = ref('');
+const photoUrls = ref<string[]>([]);
+const newPhotoUrl = ref('');
+const status = ref<PetStatus>('available');
 
 // Populate form when pet data loads
 watch(pet, (newPet) => {
   if (newPet) {
     name.value = newPet.name;
-    species.value = newPet.species ?? '';
-    breed.value = newPet.breed ?? '';
-    age.value = newPet.age ?? '';
-    status.value = newPet.status;
+    category.value = newPet.category?.name ?? '';
+    photoUrls.value = [...(newPet.photoUrls ?? [])];
+    status.value = (newPet.status as PetStatus) ?? 'available';
   }
 }, { immediate: true });
 
@@ -50,13 +50,13 @@ const updatePet = useUpdatePet({
     console.log('Pet updated:', updatedPet);
 
     // Update the cache directly
-    queryClient.setQueryData(getGetPetQueryKey({ petId: props.id }), updatedPet);
+    queryClient.setQueryData(getGetPetByIdQueryKey({ petId: parseInt(props.id, 10) }), updatedPet);
 
     // Invalidate list queries
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey as string[];
-        return key[0] === 'listPets';
+        return key[0] === 'findPetsByStatus';
       },
     });
 
@@ -68,17 +68,27 @@ const updatePet = useUpdatePet({
   },
 });
 
+function addPhotoUrl() {
+  if (newPhotoUrl.value.trim()) {
+    photoUrls.value.push(newPhotoUrl.value.trim());
+    newPhotoUrl.value = '';
+  }
+}
+
+function removePhotoUrl(index: number) {
+  photoUrls.value.splice(index, 1);
+}
+
 function handleSubmit(event: Event) {
   event.preventDefault();
 
   updatePet.mutate({
-    petId: props.id,
     data: {
+      id: parseInt(props.id, 10),
       name: name.value,
+      category: category.value ? { name: category.value } : undefined,
+      photoUrls: photoUrls.value.length > 0 ? photoUrls.value : [''],
       status: status.value,
-      species: species.value || undefined,
-      breed: breed.value || undefined,
-      age: age.value !== '' ? age.value : undefined,
     },
   });
 }
@@ -119,36 +129,12 @@ function handleSubmit(event: Event) {
 
         <div class="form-row">
           <div class="form-group">
-            <label for="species">Species</label>
+            <label for="category">Category</label>
             <input
-              id="species"
-              v-model="species"
+              id="category"
+              v-model="category"
               type="text"
               placeholder="Dog, Cat, etc."
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="breed">Breed</label>
-            <input
-              id="breed"
-              v-model="breed"
-              type="text"
-              placeholder="e.g., Golden Retriever"
-            />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="age">Age</label>
-            <input
-              id="age"
-              v-model.number="age"
-              type="number"
-              min="0"
-              max="100"
-              placeholder="Years"
             />
           </div>
 
@@ -157,10 +143,27 @@ function handleSubmit(event: Event) {
             <select id="status" v-model="status">
               <option value="available">Available</option>
               <option value="pending">Pending</option>
-              <option value="adopted">Adopted</option>
-              <option value="fostered">Fostered</option>
+              <option value="sold">Sold</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>Photo URLs</label>
+          <div class="photo-input">
+            <input
+              v-model="newPhotoUrl"
+              type="url"
+              placeholder="https://example.com/photo.jpg"
+            />
+            <button type="button" class="btn btn-small" @click="addPhotoUrl">Add</button>
+          </div>
+          <ul v-if="photoUrls.length > 0" class="photo-list">
+            <li v-for="(url, index) in photoUrls" :key="index">
+              <span class="photo-url">{{ url }}</span>
+              <button type="button" class="btn-remove" @click="removePhotoUrl(index)">Remove</button>
+            </li>
+          </ul>
         </div>
 
         <div v-if="updatePet.error.value" class="error">
@@ -258,6 +261,48 @@ h1 {
   gap: 20px;
 }
 
+.photo-input {
+  display: flex;
+  gap: 10px;
+}
+
+.photo-input input {
+  flex: 1;
+}
+
+.photo-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.photo-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+
+.photo-url {
+  font-size: 0.9rem;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .error {
   padding: 12px;
   background: #fee;
@@ -283,6 +328,10 @@ h1 {
   font-weight: 500;
   text-decoration: none;
   display: inline-block;
+}
+
+.btn-small {
+  padding: 8px 16px;
 }
 
 .btn-primary {

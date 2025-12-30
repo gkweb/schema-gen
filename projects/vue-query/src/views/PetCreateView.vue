@@ -3,7 +3,7 @@
  * Pet Create View
  *
  * Demonstrates:
- * - useCreatePet mutation
+ * - useAddPet mutation
  * - Form handling with Vue reactivity
  * - Query invalidation after creation
  * - Navigation after success
@@ -12,20 +12,21 @@
 import { ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useCreatePet } from '../api/queries';
-import { PetStatus } from '../api/enums';
+import { useAddPet } from '../api/queries';
+
+type PetStatus = 'available' | 'pending' | 'sold';
 
 const router = useRouter();
 const queryClient = useQueryClient();
 
 const name = ref('');
-const species = ref('');
-const breed = ref('');
-const age = ref<number | ''>('');
-const status = ref<PetStatus>(PetStatus.AVAILABLE);
+const category = ref('');
+const photoUrls = ref<string[]>([]);
+const newPhotoUrl = ref('');
+const status = ref<PetStatus>('available');
 
-// Demonstrates useCreatePet mutation
-const createPet = useCreatePet({
+// Demonstrates useAddPet mutation
+const addPet = useAddPet({
   onSuccess: (newPet) => {
     console.log('Pet created:', newPet);
 
@@ -33,7 +34,7 @@ const createPet = useCreatePet({
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey as string[];
-        return key[0] === 'listPets';
+        return key[0] === 'findPetsByStatus';
       },
     });
 
@@ -45,15 +46,25 @@ const createPet = useCreatePet({
   },
 });
 
+function addPhotoUrl() {
+  if (newPhotoUrl.value.trim()) {
+    photoUrls.value.push(newPhotoUrl.value.trim());
+    newPhotoUrl.value = '';
+  }
+}
+
+function removePhotoUrl(index: number) {
+  photoUrls.value.splice(index, 1);
+}
+
 function handleSubmit(event: Event) {
   event.preventDefault();
 
-  createPet.mutate({
+  addPet.mutate({
     data: {
       name: name.value,
-      species: species.value || undefined,
-      breed: breed.value || undefined,
-      age: age.value !== '' ? age.value : undefined,
+      category: category.value ? { name: category.value } : undefined,
+      photoUrls: photoUrls.value.length > 0 ? photoUrls.value : [''],
       status: status.value,
     },
   });
@@ -65,10 +76,10 @@ function handleSubmit(event: Event) {
     <div class="breadcrumb">
       <RouterLink to="/pets">Pets</RouterLink>
       <span>/</span>
-      <span>New Pet</span>
+      <span>Add Pet</span>
     </div>
 
-    <h1>Create New Pet</h1>
+    <h1>Add New Pet</h1>
 
     <form class="form" @submit="handleSubmit">
       <div class="form-group">
@@ -84,36 +95,12 @@ function handleSubmit(event: Event) {
 
       <div class="form-row">
         <div class="form-group">
-          <label for="species">Species</label>
+          <label for="category">Category</label>
           <input
-            id="species"
-            v-model="species"
+            id="category"
+            v-model="category"
             type="text"
             placeholder="Dog, Cat, etc."
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="breed">Breed</label>
-          <input
-            id="breed"
-            v-model="breed"
-            type="text"
-            placeholder="e.g., Golden Retriever"
-          />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="age">Age</label>
-          <input
-            id="age"
-            v-model.number="age"
-            type="number"
-            min="0"
-            max="100"
-            placeholder="Years"
           />
         </div>
 
@@ -122,14 +109,31 @@ function handleSubmit(event: Event) {
           <select id="status" v-model="status">
             <option value="available">Available</option>
             <option value="pending">Pending</option>
-            <option value="adopted">Adopted</option>
-            <option value="fostered">Fostered</option>
+            <option value="sold">Sold</option>
           </select>
         </div>
       </div>
 
-      <div v-if="createPet.error.value" class="error">
-        Error: {{ createPet.error.value.message }}
+      <div class="form-group">
+        <label>Photo URLs</label>
+        <div class="photo-input">
+          <input
+            v-model="newPhotoUrl"
+            type="url"
+            placeholder="https://example.com/photo.jpg"
+          />
+          <button type="button" class="btn btn-small" @click="addPhotoUrl">Add</button>
+        </div>
+        <ul v-if="photoUrls.length > 0" class="photo-list">
+          <li v-for="(url, index) in photoUrls" :key="index">
+            <span class="photo-url">{{ url }}</span>
+            <button type="button" class="btn-remove" @click="removePhotoUrl(index)">Remove</button>
+          </li>
+        </ul>
+      </div>
+
+      <div v-if="addPet.error.value" class="error">
+        Error: {{ addPet.error.value.message }}
       </div>
 
       <div class="form-actions">
@@ -139,9 +143,9 @@ function handleSubmit(event: Event) {
         <button
           type="submit"
           class="btn btn-primary"
-          :disabled="createPet.isPending.value || !name"
+          :disabled="addPet.isPending.value || !name"
         >
-          {{ createPet.isPending.value ? 'Creating...' : 'Create Pet' }}
+          {{ addPet.isPending.value ? 'Creating...' : 'Add Pet' }}
         </button>
       </div>
     </form>
@@ -209,6 +213,48 @@ h1 {
   gap: 20px;
 }
 
+.photo-input {
+  display: flex;
+  gap: 10px;
+}
+
+.photo-input input {
+  flex: 1;
+}
+
+.photo-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.photo-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+
+.photo-url {
+  font-size: 0.9rem;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .error {
   padding: 12px;
   background: #fee;
@@ -234,6 +280,10 @@ h1 {
   font-weight: 500;
   text-decoration: none;
   display: inline-block;
+}
+
+.btn-small {
+  padding: 8px 16px;
 }
 
 .btn-primary {

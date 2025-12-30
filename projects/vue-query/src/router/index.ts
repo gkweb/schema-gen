@@ -2,9 +2,9 @@
  * Vue Router configuration with REST-like routes
  *
  * Demonstrates:
- * - List routes (/pets, /users)
- * - Detail routes (/pets/:id, /users/:id)
- * - Nested resources (/users/:id/pets)
+ * - List routes (/pets, /users, /store)
+ * - Detail routes (/pets/:id, /users/:username, /store/orders/:id)
+ * - Query parameters for filtering
  */
 
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
     path: '/pets/new',
     name: 'pet-create',
     component: () => import('../views/PetCreateView.vue'),
-    meta: { title: 'Create Pet' },
+    meta: { title: 'Add Pet' },
   },
   {
     path: '/pets/:id',
@@ -41,6 +41,20 @@ const routes: RouteRecordRaw[] = [
     props: true,
     meta: { title: 'Edit Pet' },
   },
+  // Store routes
+  {
+    path: '/store',
+    name: 'store',
+    component: () => import('../views/StoreView.vue'),
+    meta: { title: 'Store' },
+  },
+  {
+    path: '/store/orders/:id',
+    name: 'order-detail',
+    component: () => import('../views/OrderDetailView.vue'),
+    props: true,
+    meta: { title: 'Order Details' },
+  },
   // User routes
   {
     path: '/users',
@@ -49,32 +63,11 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Users' },
   },
   {
-    path: '/users/:id',
+    path: '/users/:username',
     name: 'user-detail',
     component: () => import('../views/UserDetailView.vue'),
     props: true,
     meta: { title: 'User Details' },
-  },
-  {
-    path: '/users/:id/pets',
-    name: 'user-pets',
-    component: () => import('../views/UserPetsView.vue'),
-    props: true,
-    meta: { title: "User's Pets" },
-  },
-  // Files routes
-  {
-    path: '/files',
-    name: 'files',
-    component: () => import('../views/FilesView.vue'),
-    meta: { title: 'Files' },
-  },
-  // Health route
-  {
-    path: '/health',
-    name: 'health',
-    component: () => import('../views/HealthView.vue'),
-    meta: { title: 'Health Status' },
   },
 ];
 

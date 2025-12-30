@@ -3,26 +3,25 @@
  * User Detail View
  *
  * Demonstrates:
- * - useGetUser query with path parameter
- * - Link to nested resource (/users/:id/pets)
+ * - useGetUserByName query with username path parameter
+ * - useUpdateUser mutation
  * - useDeleteUser mutation
  */
 
 import { computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
-import { useGetUser, useDeleteUser } from '../api/queries';
-import { UserRole } from '../api/enums';
+import { useGetUserByName, useDeleteUser } from '../api/queries';
 
 const props = defineProps<{
-  id: string;
+  username: string;
 }>();
 
 const router = useRouter();
 const queryClient = useQueryClient();
 
-const params = computed(() => ({ userId: parseInt(props.id, 10) }));
-const { data: user, isLoading, error } = useGetUser(params);
+const params = computed(() => ({ username: props.username }));
+const { data: user, isLoading, error } = useGetUserByName(params);
 
 const deleteUser = useDeleteUser({
   onSuccess: () => {
@@ -32,7 +31,7 @@ const deleteUser = useDeleteUser({
     queryClient.invalidateQueries({
       predicate: (query) => {
         const key = query.queryKey as string[];
-        return key[0] === 'listUsers' || key[0] === 'getUser';
+        return key[0] === 'getUserByName';
       },
     });
 
@@ -42,29 +41,8 @@ const deleteUser = useDeleteUser({
 
 function handleDelete() {
   if (confirm('Are you sure you want to delete this user?')) {
-    deleteUser.mutate({ userId: parseInt(props.id, 10) });
+    deleteUser.mutate({ username: props.username });
   }
-}
-
-function getRoleBadgeColor(role: UserRole): string {
-  switch (role) {
-    case 'admin':
-      return '#dc3545';
-    case 'staff':
-      return '#17a2b8';
-    case 'customer':
-      return '#28a745';
-    default:
-      return '#6c757d';
-  }
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 }
 </script>
 
@@ -73,7 +51,7 @@ function formatDate(dateString: string): string {
     <div class="breadcrumb">
       <RouterLink to="/users">Users</RouterLink>
       <span>/</span>
-      <span>{{ user?.name ?? user?.email ?? 'Loading...' }}</span>
+      <span>{{ user?.username ?? 'Loading...' }}</span>
     </div>
 
     <div v-if="isLoading" class="loading">
@@ -92,19 +70,13 @@ function formatDate(dateString: string): string {
       <div class="header">
         <div class="user-header">
           <div class="avatar">
-            <img v-if="user.avatar" :src="user.avatar" :alt="user.name ?? user.email" />
-            <span v-else class="avatar-placeholder">
-              {{ (user.name ?? user.email).charAt(0).toUpperCase() }}
+            <span class="avatar-placeholder">
+              {{ (user.username ?? '?').charAt(0).toUpperCase() }}
             </span>
           </div>
           <div class="user-title">
-            <h1>{{ user.name ?? 'No name' }}</h1>
-            <span
-              class="role-badge"
-              :style="{ backgroundColor: getRoleBadgeColor(user.role) }"
-            >
-              {{ user.role }}
-            </span>
+            <h1>{{ user.firstName }} {{ user.lastName }}</h1>
+            <span class="username">@{{ user.username }}</span>
           </div>
         </div>
         <div class="actions">
@@ -121,13 +93,28 @@ function formatDate(dateString: string): string {
       <div class="card">
         <div class="info-grid">
           <div class="info-item">
+            <label>Username</label>
+            <span>{{ user.username }}</span>
+          </div>
+
+          <div v-if="user.email" class="info-item">
             <label>Email</label>
             <a :href="`mailto:${user.email}`">{{ user.email }}</a>
           </div>
 
-          <div class="info-item">
-            <label>Role</label>
-            <span>{{ user.role }}</span>
+          <div v-if="user.firstName" class="info-item">
+            <label>First Name</label>
+            <span>{{ user.firstName }}</span>
+          </div>
+
+          <div v-if="user.lastName" class="info-item">
+            <label>Last Name</label>
+            <span>{{ user.lastName }}</span>
+          </div>
+
+          <div v-if="user.phone" class="info-item">
+            <label>Phone</label>
+            <span>{{ user.phone }}</span>
           </div>
 
           <div class="info-item">
@@ -135,24 +122,12 @@ function formatDate(dateString: string): string {
             <span>{{ user.id }}</span>
           </div>
 
-          <div v-if="user.createdAt" class="info-item">
-            <label>Member Since</label>
-            <span>{{ formatDate(user.createdAt) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="related-section">
-        <h2>Related Resources</h2>
-        <div class="related-links">
-          <RouterLink :to="`/users/${id}/pets`" class="related-link">
-            <span class="link-icon">🐾</span>
-            <span class="link-text">
-              <strong>View Pets</strong>
-              <span>See all pets owned by this user</span>
+          <div class="info-item">
+            <label>Status</label>
+            <span :class="{ active: user.userStatus === 1 }">
+              {{ user.userStatus === 1 ? 'Active' : 'Inactive' }}
             </span>
-            <span class="arrow">→</span>
-          </RouterLink>
+          </div>
         </div>
       </div>
     </template>
@@ -206,12 +181,6 @@ function formatDate(dateString: string): string {
   flex-shrink: 0;
 }
 
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .avatar-placeholder {
   display: flex;
   align-items: center;
@@ -227,21 +196,16 @@ function formatDate(dateString: string): string {
 .user-title {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .user-title h1 {
   margin: 0;
 }
 
-.role-badge {
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 4px;
-  color: white;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  font-weight: 500;
+.username {
+  color: #666;
+  font-size: 1rem;
 }
 
 .btn {
@@ -293,57 +257,8 @@ function formatDate(dateString: string): string {
   color: #333;
 }
 
-.related-section h2 {
-  font-size: 1.2rem;
-  margin-bottom: 15px;
-}
-
-.related-links {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.related-link {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.2s;
-}
-
-.related-link:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  text-decoration: none;
-}
-
-.link-icon {
-  font-size: 1.5rem;
-}
-
-.link-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.link-text strong {
-  color: #333;
-}
-
-.link-text span {
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.arrow {
-  color: #999;
-  font-size: 1.2rem;
+.info-item .active {
+  color: #28a745;
+  font-weight: 500;
 }
 </style>

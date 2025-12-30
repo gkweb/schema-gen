@@ -3,69 +3,47 @@
  * Pet List View
  *
  * Demonstrates:
- * - useListPets query with reactive parameters
- * - Pagination (limit, offset)
- * - Filtering (status)
+ * - useFindPetsByStatus query with reactive parameters
+ * - Filtering by pet status
  * - Query key exports for cache invalidation
  * - Vue reactive refs for query parameters
  */
 
 import { ref, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import { useListPets, getListPetsQueryKey } from '../api/queries';
-import { PetStatus } from '../api/enums';
+import { useFindPetsByStatus, getFindPetsByStatusQueryKey } from '../api/queries';
 
-const limit = ref(10);
-const offset = ref(0);
-const status = ref<PetStatus | undefined>(undefined);
+type PetStatus = 'available' | 'pending' | 'sold';
 
-// Demonstrates useListPets with reactive parameters
+const status = ref<PetStatus>('available');
+
+// Demonstrates useFindPetsByStatus with reactive parameters
 const params = computed(() => ({
-  limit: limit.value,
-  offset: offset.value,
-  status: status.value,
+  status: [status.value],
 }));
 
-const { data, isLoading, error, isFetching } = useListPets(params, {
-  // Keep previous data while fetching new page
+const { data: pets, isLoading, error, isFetching } = useFindPetsByStatus(params, {
+  // Keep previous data while fetching new status
   placeholderData: (prev) => prev,
 });
 
 // Demonstrates exported query key - useful for cache invalidation
-const queryKey = computed(() => getListPetsQueryKey(params.value));
+const queryKey = computed(() => getFindPetsByStatusQueryKey(params.value));
 console.log('Pet list query key:', queryKey.value);
 
-const pets = computed(() => data.value?.items ?? []);
-const total = computed(() => data.value?.total ?? 0);
-const hasMore = computed(() => data.value?.hasMore ?? false);
-
-const currentPage = computed(() => Math.floor(offset.value / limit.value) + 1);
-const totalPages = computed(() => Math.ceil(total.value / limit.value));
-
-function goToPrevPage() {
-  offset.value = Math.max(0, offset.value - limit.value);
-}
-
-function goToNextPage() {
-  offset.value = offset.value + limit.value;
-}
-
 function handleStatusChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
-  status.value = value ? (value as PetStatus) : undefined;
-  offset.value = 0; // Reset to first page
+  const value = (event.target as HTMLSelectElement).value as PetStatus;
+  status.value = value;
 }
 
-function getStatusColor(petStatus: PetStatus): string {
+function getStatusColor(petStatus: string | undefined): string {
   switch (petStatus) {
     case 'available':
       return '#4caf50';
     case 'pending':
       return '#ff9800';
-    case 'adopted':
+    case 'sold':
       return '#2196f3';
-    case 'fostered':
-      return '#9c27b0';
     default:
       return '#9e9e9e';
   }
@@ -84,12 +62,10 @@ function getStatusColor(petStatus: PetStatus): string {
     <div class="filters">
       <label class="filter">
         Status:
-        <select :value="status ?? ''" @change="handleStatusChange">
-          <option value="">All</option>
+        <select :value="status" @change="handleStatusChange">
           <option value="available">Available</option>
           <option value="pending">Pending</option>
-          <option value="adopted">Adopted</option>
-          <option value="fostered">Fostered</option>
+          <option value="sold">Sold</option>
         </select>
       </label>
       <span v-if="isFetching" class="refreshing">Refreshing...</span>
@@ -105,11 +81,14 @@ function getStatusColor(petStatus: PetStatus): string {
 
     <template v-else>
       <div class="stats">
-        Showing {{ pets.length }} of {{ total }} pets
-        <span v-if="totalPages > 1">(Page {{ currentPage }} of {{ totalPages }})</span>
+        Found {{ pets?.length ?? 0 }} {{ status }} pets
       </div>
 
-      <ul class="list">
+      <div v-if="!pets?.length" class="empty">
+        No pets found with status "{{ status }}".
+      </div>
+
+      <ul v-else class="list">
         <li v-for="pet in pets" :key="pet.id" class="list-item">
           <RouterLink :to="`/pets/${pet.id}`" class="pet-link">
             <div class="pet-info">
@@ -120,25 +99,15 @@ function getStatusColor(petStatus: PetStatus): string {
               >
                 {{ pet.status }}
               </span>
-              <span v-if="pet.species" class="pet-species">{{ pet.species }}</span>
+              <span v-if="pet.category?.name" class="pet-category">{{ pet.category.name }}</span>
             </div>
             <div class="pet-meta">
-              <span v-if="pet.breed">{{ pet.breed }}</span>
-              <span v-if="pet.age !== undefined">{{ pet.age }} years old</span>
+              <span v-if="pet.photoUrls?.length">{{ pet.photoUrls.length }} photo(s)</span>
+              <span v-if="pet.tags?.length">{{ pet.tags.map(t => t.name).join(', ') }}</span>
             </div>
           </RouterLink>
         </li>
       </ul>
-
-      <div class="pagination">
-        <button :disabled="offset === 0" @click="goToPrevPage">
-          Previous
-        </button>
-        <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
-        <button :disabled="!hasMore" @click="goToNextPage">
-          Next
-        </button>
-      </div>
     </template>
   </div>
 </template>
@@ -204,13 +173,19 @@ function getStatusColor(petStatus: PetStatus): string {
   font-style: italic;
 }
 
-.loading, .error {
+.loading, .error, .empty {
   padding: 40px;
   text-align: center;
 }
 
 .error {
   color: #dc3545;
+}
+
+.empty {
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
 .stats {
@@ -262,7 +237,7 @@ function getStatusColor(petStatus: PetStatus): string {
   text-transform: uppercase;
 }
 
-.pet-species {
+.pet-category {
   color: #666;
 }
 
@@ -271,19 +246,5 @@ function getStatusColor(petStatus: PetStatus): string {
   gap: 15px;
   color: #888;
   font-size: 0.9rem;
-}
-
-.pagination {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  justify-content: center;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-}
-
-.page-info {
-  color: #666;
 }
 </style>

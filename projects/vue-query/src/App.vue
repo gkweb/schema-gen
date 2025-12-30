@@ -2,11 +2,12 @@
 /**
  * Main App component with navigation layout
  *
- * This app showcases all the generated Vue Query composables from the petstore API:
- * - Query composables (useListPets, useGetPet, etc.)
- * - Mutation composables (useCreatePet, useUpdatePet, useDeletePet, etc.)
+ * This app showcases Vue Query composables generated for the Swagger Petstore v2 API:
+ * - Query composables (useFindPetsByStatus, useGetPetById, useGetInventory, etc.)
+ * - Mutation composables (useAddPet, useUpdatePet, useDeletePet, usePlaceOrder, etc.)
  * - Query key usage for cache invalidation
  * - Vue Router integration for REST-like navigation
+ * - Live integration with https://petstore.swagger.io/v2
  */
 import { RouterView, RouterLink, useRoute } from 'vue-router';
 import { computed } from 'vue';
@@ -15,9 +16,8 @@ const route = useRoute();
 
 const navItems = [
   { to: '/pets', label: 'Pets', icon: '🐾' },
+  { to: '/store', label: 'Store', icon: '🛒' },
   { to: '/users', label: 'Users', icon: '👥' },
-  { to: '/files', label: 'Files', icon: '📁' },
-  { to: '/health', label: 'Health', icon: '💚' },
 ];
 
 const isActive = (path: string) => computed(() => route.path.startsWith(path));

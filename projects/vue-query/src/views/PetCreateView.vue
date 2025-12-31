@@ -13,8 +13,7 @@ import { ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useAddPet } from '../api/queries';
-
-type PetStatus = 'available' | 'pending' | 'sold';
+import { Pet_Status } from '../api/enums';
 
 const router = useRouter();
 const queryClient = useQueryClient();
@@ -23,7 +22,7 @@ const name = ref('');
 const category = ref('');
 const photoUrls = ref<string[]>([]);
 const newPhotoUrl = ref('');
-const status = ref<PetStatus>('available');
+const status = ref<Pet_Status>(Pet_Status.AVAILABLE);
 
 // Demonstrates useAddPet mutation
 const addPet = useAddPet({

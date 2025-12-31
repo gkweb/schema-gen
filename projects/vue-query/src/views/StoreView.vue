@@ -11,6 +11,7 @@
 import { ref, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useGetInventory, usePlaceOrder, useGetOrderById } from '../api/queries';
+import { Order_Status } from '../api/enums';
 
 // Get store inventory
 const { data: inventory, isLoading: inventoryLoading, error: inventoryError } = useGetInventory();
@@ -50,7 +51,7 @@ function handlePlaceOrder(event: Event) {
     data: {
       petId: petId.value,
       quantity: quantity.value,
-      status: 'placed',
+      status: Order_Status.PLACED,
       complete: false,
     },
   });

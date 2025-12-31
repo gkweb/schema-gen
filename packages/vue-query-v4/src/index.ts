@@ -515,7 +515,7 @@ function generateQueryOptionsFn(
 ): string {
   const fnName = `get${pascalName}QueryOptions`;
   const keyFnName = `get${pascalName}QueryKey`;
-  const fetchCall = buildFetchCall(endpoint, config, hasParams);
+  const fetchCall = buildFetchCall(endpoint, config, hasParams, responseType);
 
   if (!hasParams) {
     return `export const ${fnName} = <TData = ${responseType}, TError = ${errorType}>(
@@ -697,6 +697,7 @@ function generateUseMutationHook(
     config,
     isFormData,
     formDataFnConfig,
+    responseType,
   );
 
   let jsDoc = '';
@@ -730,6 +731,7 @@ function buildMutationFn(
   config: ResolvedConfig,
   isFormData: boolean,
   formDataFnConfig: { from: string; name: string } | false | undefined,
+  responseType: string,
 ): string {
   const baseUrl = config.baseUrl;
   const method = endpoint.method;
@@ -762,14 +764,14 @@ function buildMutationFn(
     if (hasBody) {
       if (useFormData && formDataFnName) {
         // FormData with custom fetch - pass FormData body, no Content-Type header (browser sets it with boundary)
-        return `(${varsParam}) => ${fetchName}(${path}, { method: '${method}', body: ${formDataFnName}(vars.data, { path: '${endpoint.path}', method: '${method}' }) })`;
+        return `(${varsParam}) => ${fetchName}<${responseType}>(${path}, { method: '${method}', body: ${formDataFnName}(vars.data as Record<string, unknown>, { path: '${endpoint.path}', method: '${method}' }) })`;
       }
-      return `(${varsParam}) => ${fetchName}(${path}, { method: '${method}', body: vars.data })`;
+      return `(${varsParam}) => ${fetchName}<${responseType}>(${path}, { method: '${method}', body: vars.data })`;
     }
     if (hasPathParams) {
-      return `(${varsParam}) => ${fetchName}(${path}, { method: '${method}' })`;
+      return `(${varsParam}) => ${fetchName}<${responseType}>(${path}, { method: '${method}' })`;
     }
-    return `() => ${fetchName}(${path}, { method: '${method}' })`;
+    return `() => ${fetchName}<${responseType}>(${path}, { method: '${method}' })`;
   }
 
   // Native fetch
@@ -778,7 +780,7 @@ function buildMutationFn(
       // FormData with native fetch - no Content-Type header (browser sets it with boundary)
       return `(${varsParam}) => fetch(${path}, {
       method: '${method}',
-      body: ${formDataFnName}(vars.data, { path: '${endpoint.path}', method: '${method}' }),
+      body: ${formDataFnName}(vars.data as Record<string, unknown>, { path: '${endpoint.path}', method: '${method}' }),
     }).then(res => res.json())`;
     }
     return `(${varsParam}) => fetch(${path}, {
@@ -956,6 +958,7 @@ function buildFetchCall(
   endpoint: EndpointNode,
   config: ResolvedConfig,
   hasParams: boolean,
+  responseType: string,
 ): string {
   const allParams = endpoint.parameters ?? [];
   const pathParams = allParams.filter((p) => p.location === 'path');
@@ -979,7 +982,7 @@ function buildFetchCall(
   if (!needsTemplate && !hasQueryParams) {
     // Simple static path
     if (config.fetchFn) {
-      return `${config.fetchFn.name}('${baseUrl}${path}')`;
+      return `${config.fetchFn.name}<${responseType}>('${baseUrl}${path}')`;
     }
     return `fetch('${baseUrl}${path}').then(res => res.json())`;
   }
@@ -1004,7 +1007,7 @@ function buildFetchCall(
   }
 
   if (config.fetchFn) {
-    lines.push(`      return ${config.fetchFn.name}(url);`);
+    lines.push(`      return ${config.fetchFn.name}<${responseType}>(url);`);
   } else {
     lines.push(`      return fetch(url).then(res => res.json());`);
   }

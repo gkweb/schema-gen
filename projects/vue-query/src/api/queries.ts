@@ -177,7 +177,7 @@ export const useDeletePet = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, DeletePetVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, DeletePetVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>(`/pet/${vars.petId}`, { method: 'DELETE' }),
+    mutationFn: (vars) => apiClient<unknown>(`/pet/${vars.petId}`, { method: 'DELETE' }),
     ...options,
   });
 };
@@ -198,7 +198,7 @@ export const useUploadFile = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<ApiResponse, TError, UploadFileVariables, TContext>>
 ): UseMutationReturnType<ApiResponse, TError, UploadFileVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<ApiResponse>(`/pet/${vars.petId}/uploadImage`, { method: 'POST', body: toFormData(vars.data as object, { path: '/pet/{petId}/uploadImage', method: 'POST' }) }),
+    mutationFn: (vars) => apiClient<ApiResponse>(`/pet/${vars.petId}/uploadImage`, { method: 'POST', body: toFormData(vars.data as Record<string, unknown>, { path: '/pet/{petId}/uploadImage', method: 'POST' }) }),
     ...options,
   });
 };
@@ -214,7 +214,7 @@ export const getGetInventoryQueryOptions = <TData = unknown, TError = Error>(
   options?: Partial<UseQueryOptions<unknown, TError, TData>>
 ) => ({
   queryKey: getGetInventoryQueryKey(),
-  queryFn: () => apiClient<Record<string, number>>('/store/inventory'),
+  queryFn: () => apiClient<unknown>('/store/inventory'),
   ...options,
 });
 
@@ -299,7 +299,7 @@ export const useDeleteOrder = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, DeleteOrderVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, DeleteOrderVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>(`/store/order/${vars.orderId}`, { method: 'DELETE' }),
+    mutationFn: (vars) => apiClient<unknown>(`/store/order/${vars.orderId}`, { method: 'DELETE' }),
     ...options,
   });
 };
@@ -319,7 +319,7 @@ export const useCreateUser = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, CreateUserVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, CreateUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>('/user', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<unknown>('/user', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -339,7 +339,7 @@ export const useCreateUsersWithArrayInput = <TError = Error, TContext = unknown>
   options?: Partial<UseMutationOptions<unknown, TError, CreateUsersWithArrayInputVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, CreateUsersWithArrayInputVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>('/user/createWithArray', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<unknown>('/user/createWithArray', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -359,7 +359,7 @@ export const useCreateUsersWithListInput = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, CreateUsersWithListInputVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, CreateUsersWithListInputVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>('/user/createWithList', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<unknown>('/user/createWithList', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -416,7 +416,7 @@ export const getLogoutUserQueryOptions = <TData = unknown, TError = Error>(
   options?: Partial<UseQueryOptions<unknown, TError, TData>>
 ) => ({
   queryKey: getLogoutUserQueryKey(),
-  queryFn: () => apiClient<void>('/user/logout'),
+  queryFn: () => apiClient<unknown>('/user/logout'),
   ...options,
 });
 
@@ -482,7 +482,7 @@ export const useUpdateUser = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, UpdateUserVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, UpdateUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>(`/user/${vars.username}`, { method: 'PUT', body: vars.data }),
+    mutationFn: (vars) => apiClient<unknown>(`/user/${vars.username}`, { method: 'PUT', body: vars.data }),
     ...options,
   });
 };
@@ -502,7 +502,7 @@ export const useDeleteUser = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, TError, DeleteUserVariables, TContext>>
 ): UseMutationReturnType<unknown, TError, DeleteUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<void>(`/user/${vars.username}`, { method: 'DELETE' }),
+    mutationFn: (vars) => apiClient<unknown>(`/user/${vars.username}`, { method: 'DELETE' }),
     ...options,
   });
 };

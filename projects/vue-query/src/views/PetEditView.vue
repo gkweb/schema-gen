@@ -13,8 +13,7 @@ import { ref, watch, computed } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useQueryClient } from '@tanstack/vue-query';
 import { useGetPetById, useUpdatePet, getGetPetByIdQueryKey } from '../api/queries';
-
-type PetStatus = 'available' | 'pending' | 'sold';
+import { Pet_Status } from '../api/enums';
 
 const props = defineProps<{
   id: string;
@@ -32,7 +31,7 @@ const name = ref('');
 const category = ref('');
 const photoUrls = ref<string[]>([]);
 const newPhotoUrl = ref('');
-const status = ref<PetStatus>('available');
+const status = ref<Pet_Status>(Pet_Status.AVAILABLE);
 
 // Populate form when pet data loads
 watch(pet, (newPet) => {
@@ -40,7 +39,7 @@ watch(pet, (newPet) => {
     name.value = newPet.name;
     category.value = newPet.category?.name ?? '';
     photoUrls.value = [...(newPet.photoUrls ?? [])];
-    status.value = (newPet.status as PetStatus) ?? 'available';
+    status.value = (newPet.status as Pet_Status) ?? Pet_Status.AVAILABLE;
   }
 }, { immediate: true });
 

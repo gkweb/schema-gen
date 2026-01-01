@@ -19,7 +19,7 @@ const status = ref<PetStatus>('available');
 
 // Demonstrates useFindPetsByStatus with reactive parameters
 const params = computed(() => ({
-  status: [status.value],
+  status: status.value,
 }));
 
 const { data: pets, isLoading, error, isFetching } = useFindPetsByStatus(params, {
@@ -28,7 +28,7 @@ const { data: pets, isLoading, error, isFetching } = useFindPetsByStatus(params,
 });
 
 // Demonstrates exported query key - useful for cache invalidation
-const queryKey = computed(() => getFindPetsByStatusQueryKey(params.value));
+const queryKey = computed(() => getFindPetsByStatusQueryKey({ status: status.value }));
 console.log('Pet list query key:', queryKey.value);
 
 function handleStatusChange(event: Event) {

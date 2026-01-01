@@ -5,7 +5,6 @@ import { useQuery, useMutation } from '@tanstack/vue-query';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { apiClient } from '../lib/client';
-import { toFormData } from '../lib/form-data';
 import type { ApiResponse, Order, Pet, User } from './types';
 
 
@@ -16,7 +15,7 @@ export interface AddPetVariables {
 }
 
 /**
- * Add a new pet to the store
+ * Add a new pet to the store.
  * @path POST /pet
  */
 export const useAddPet = <TError = Error, TContext = unknown>(
@@ -36,7 +35,7 @@ export interface UpdatePetVariables {
 }
 
 /**
- * Update an existing pet
+ * Update an existing pet.
  * @path PUT /pet
  */
 export const useUpdatePet = <TError = Error, TContext = unknown>(
@@ -52,7 +51,7 @@ export const useUpdatePet = <TError = Error, TContext = unknown>(
 // ============ GET /pet/findByStatus ============
 
 export interface FindPetsByStatusParams {
-  status: string[];
+  status: string;
 }
 
 export const getFindPetsByStatusQueryKey = (params: FindPetsByStatusParams) =>
@@ -77,7 +76,7 @@ export const getFindPetsByStatusQueryOptions = <TData = Pet[], TError = Error>(
 });
 
 /**
- * Finds Pets by status
+ * Finds Pets by status.
  * @path GET /pet/findByStatus
  */
 export const useFindPetsByStatus = <TData = Pet[], TError = Error>(
@@ -116,7 +115,7 @@ export const getFindPetsByTagsQueryOptions = <TData = Pet[], TError = Error>(
 });
 
 /**
- * Finds Pets by tags
+ * Finds Pets by tags.
  * @path GET /pet/findByTags
  */
 export const useFindPetsByTags = <TData = Pet[], TError = Error>(
@@ -152,7 +151,7 @@ export const getGetPetByIdQueryOptions = <TData = Pet, TError = Error>(
 });
 
 /**
- * Find pet by ID
+ * Find pet by ID.
  * @path GET /pet/{petId}
  */
 export const useGetPetById = <TData = Pet, TError = Error>(
@@ -163,6 +162,26 @@ export const useGetPetById = <TData = Pet, TError = Error>(
 };
 
 
+// ============ POST /pet/{petId} ============
+
+export interface UpdatePetWithFormVariables {
+  petId: number;
+}
+
+/**
+ * Updates a pet in the store with form data.
+ * @path POST /pet/{petId}
+ */
+export const useUpdatePetWithForm = <TError = Error, TContext = unknown>(
+  options?: Partial<UseMutationOptions<Pet, TError, UpdatePetWithFormVariables, TContext>>
+): UseMutationReturnType<Pet, TError, UpdatePetWithFormVariables, TContext> => {
+  return useMutation({
+    mutationFn: (vars) => apiClient<Pet>(`/pet/${vars.petId}`, { method: 'POST' }),
+    ...options,
+  });
+};
+
+
 // ============ DELETE /pet/{petId} ============
 
 export interface DeletePetVariables {
@@ -170,7 +189,7 @@ export interface DeletePetVariables {
 }
 
 /**
- * Deletes a pet
+ * Deletes a pet.
  * @path DELETE /pet/{petId}
  */
 export const useDeletePet = <TError = Error, TContext = unknown>(
@@ -191,14 +210,14 @@ export interface UploadFileVariables {
 }
 
 /**
- * Uploads an image
+ * Uploads an image.
  * @path POST /pet/{petId}/uploadImage
  */
 export const useUploadFile = <TError = Error, TContext = unknown>(
   options?: Partial<UseMutationOptions<ApiResponse, TError, UploadFileVariables, TContext>>
 ): UseMutationReturnType<ApiResponse, TError, UploadFileVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<ApiResponse>(`/pet/${vars.petId}/uploadImage`, { method: 'POST', body: toFormData(vars.data as Record<string, unknown>, { path: '/pet/{petId}/uploadImage', method: 'POST' }) }),
+    mutationFn: (vars) => apiClient<ApiResponse>(`/pet/${vars.petId}/uploadImage`, { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -219,7 +238,7 @@ export const getGetInventoryQueryOptions = <TData = unknown, TError = Error>(
 });
 
 /**
- * Returns pet inventories by status
+ * Returns pet inventories by status.
  * @path GET /store/inventory
  */
 export const useGetInventory = <TData = unknown, TError = Error>(
@@ -236,7 +255,7 @@ export interface PlaceOrderVariables {
 }
 
 /**
- * Place an order for a pet
+ * Place an order for a pet.
  * @path POST /store/order
  */
 export const usePlaceOrder = <TError = Error, TContext = unknown>(
@@ -274,7 +293,7 @@ export const getGetOrderByIdQueryOptions = <TData = Order, TError = Error>(
 });
 
 /**
- * Find purchase order by ID
+ * Find purchase order by ID.
  * @path GET /store/order/{orderId}
  */
 export const useGetOrderById = <TData = Order, TError = Error>(
@@ -292,7 +311,7 @@ export interface DeleteOrderVariables {
 }
 
 /**
- * Delete purchase order by ID
+ * Delete purchase order by identifier.
  * @path DELETE /store/order/{orderId}
  */
 export const useDeleteOrder = <TError = Error, TContext = unknown>(
@@ -312,34 +331,14 @@ export interface CreateUserVariables {
 }
 
 /**
- * Create user
+ * Create user.
  * @path POST /user
  */
 export const useCreateUser = <TError = Error, TContext = unknown>(
-  options?: Partial<UseMutationOptions<unknown, TError, CreateUserVariables, TContext>>
-): UseMutationReturnType<unknown, TError, CreateUserVariables, TContext> => {
+  options?: Partial<UseMutationOptions<User, TError, CreateUserVariables, TContext>>
+): UseMutationReturnType<User, TError, CreateUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<unknown>('/user', { method: 'POST', body: vars.data }),
-    ...options,
-  });
-};
-
-
-// ============ POST /user/createWithArray ============
-
-export interface CreateUsersWithArrayInputVariables {
-  data: User[];
-}
-
-/**
- * Creates list of users with given input array
- * @path POST /user/createWithArray
- */
-export const useCreateUsersWithArrayInput = <TError = Error, TContext = unknown>(
-  options?: Partial<UseMutationOptions<unknown, TError, CreateUsersWithArrayInputVariables, TContext>>
-): UseMutationReturnType<unknown, TError, CreateUsersWithArrayInputVariables, TContext> => {
-  return useMutation({
-    mutationFn: (vars) => apiClient<unknown>('/user/createWithArray', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<User>('/user', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -352,14 +351,14 @@ export interface CreateUsersWithListInputVariables {
 }
 
 /**
- * Creates list of users with given input array
+ * Creates list of users with given input array.
  * @path POST /user/createWithList
  */
 export const useCreateUsersWithListInput = <TError = Error, TContext = unknown>(
-  options?: Partial<UseMutationOptions<unknown, TError, CreateUsersWithListInputVariables, TContext>>
-): UseMutationReturnType<unknown, TError, CreateUsersWithListInputVariables, TContext> => {
+  options?: Partial<UseMutationOptions<User, TError, CreateUsersWithListInputVariables, TContext>>
+): UseMutationReturnType<User, TError, CreateUsersWithListInputVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient<unknown>('/user/createWithList', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<User>('/user/createWithList', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
@@ -368,8 +367,8 @@ export const useCreateUsersWithListInput = <TError = Error, TContext = unknown>(
 // ============ GET /user/login ============
 
 export interface LoginUserParams {
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
 }
 
 export const getLoginUserQueryKey = (params: LoginUserParams) =>
@@ -395,7 +394,7 @@ export const getLoginUserQueryOptions = <TData = string, TError = Error>(
 });
 
 /**
- * Logs user into the system
+ * Logs user into the system.
  * @path GET /user/login
  */
 export const useLoginUser = <TData = string, TError = Error>(
@@ -421,7 +420,7 @@ export const getLogoutUserQueryOptions = <TData = unknown, TError = Error>(
 });
 
 /**
- * Logs out current logged in user session
+ * Logs out current logged in user session.
  * @path GET /user/logout
  */
 export const useLogoutUser = <TData = unknown, TError = Error>(
@@ -456,7 +455,7 @@ export const getGetUserByNameQueryOptions = <TData = User, TError = Error>(
 });
 
 /**
- * Get user by user name
+ * Get user by user name.
  * @path GET /user/{username}
  */
 export const useGetUserByName = <TData = User, TError = Error>(
@@ -475,7 +474,7 @@ export interface UpdateUserVariables {
 }
 
 /**
- * Updated user
+ * Update user resource.
  * @path PUT /user/{username}
  */
 export const useUpdateUser = <TError = Error, TContext = unknown>(
@@ -495,7 +494,7 @@ export interface DeleteUserVariables {
 }
 
 /**
- * Delete user
+ * Delete user resource.
  * @path DELETE /user/{username}
  */
 export const useDeleteUser = <TError = Error, TContext = unknown>(

@@ -24,8 +24,8 @@ export interface Order {
 
 export interface Pet {
   id?: number;
-  category?: Category;
   name: string;
+  category?: Category;
   photoUrls: string[];
   tags?: Tag[];
   status?: Pet_Status;

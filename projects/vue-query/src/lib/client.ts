@@ -8,7 +8,7 @@
  * - Error handling
  */
 
-const API_BASE_URL = 'https://petstore.swagger.io/v2';
+const API_BASE_URL = 'https://petstore3.swagger.io/api/v3';
 
 interface FetchOptions {
   method?: string;

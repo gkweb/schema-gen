@@ -1,67 +1,38 @@
-import { useState } from 'react';
-import { PetList } from './components/PetList';
-import { CreatePetForm } from './components/CreatePetForm';
-import { PetDetails } from './components/PetDetails';
-import { HealthStatus } from './components/HealthStatus';
-import { FileUpload } from './components/FileUpload';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { PetList, PetDetail, PetCreate, PetEdit, Store } from './components';
 
 /**
  * Main App component demonstrating React Query v5 hooks usage
  *
- * This app showcases all the generated hooks from the petstore API:
- * - Query hooks (useListPets, useGetPet, etc.)
- * - Mutation hooks (useCreatePet, useUpdatePet, useDeletePet, etc.)
+ * This app showcases all the generated hooks from the Petstore v3 API:
+ * - Query hooks (useFindPetsByStatus, useGetPetById, useGetInventory, etc.)
+ * - Mutation hooks (useAddPet, useUpdatePet, useDeletePet, usePlaceOrder, etc.)
  * - Query key usage for cache invalidation
  * - Query options for prefetching
- * - FormData mutations for file uploads
  */
 export default function App() {
-  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <header style={{ marginBottom: '30px' }}>
-        <h1>Petstore - React Query v5 Demo</h1>
-        <p>Integration test project for @schema-gen/plugin-react-query-v5</p>
-      </header>
+    <BrowserRouter>
+      <div className="app">
+        <header className="app-header">
+          <h1>Petstore - React Query v5</h1>
+          <nav className="app-nav">
+            <NavLink to="/pets">Pets</NavLink>
+            <NavLink to="/store">Store</NavLink>
+          </nav>
+        </header>
 
-      <div style={{ marginBottom: '20px' }}>
-        <HealthStatus />
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Navigate to="/pets" replace />} />
+            <Route path="/pets" element={<PetList />} />
+            <Route path="/pets/new" element={<PetCreate />} />
+            <Route path="/pets/:id" element={<PetDetail />} />
+            <Route path="/pets/:id/edit" element={<PetEdit />} />
+            <Route path="/store" element={<Store />} />
+          </Routes>
+        </main>
       </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2>Pets</h2>
-            <button onClick={() => setShowCreateForm(!showCreateForm)}>
-              {showCreateForm ? 'Cancel' : 'Add Pet'}
-            </button>
-          </div>
-
-          {showCreateForm && (
-            <div style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>
-              <CreatePetForm onSuccess={() => setShowCreateForm(false)} />
-            </div>
-          )}
-
-          <PetList onSelectPet={setSelectedPetId} selectedPetId={selectedPetId} />
-        </section>
-
-        <section>
-          <h2>Details</h2>
-          {selectedPetId ? (
-            <PetDetails petId={selectedPetId} onClose={() => setSelectedPetId(null)} />
-          ) : (
-            <p>Select a pet to view details</p>
-          )}
-        </section>
-      </div>
-
-      <section style={{ marginTop: '30px' }}>
-        <h2>File Upload</h2>
-        <FileUpload />
-      </section>
-    </div>
+    </BrowserRouter>
   );
 }

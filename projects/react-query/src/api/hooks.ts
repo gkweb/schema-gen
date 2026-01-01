@@ -3,493 +3,505 @@
 import { useQuery, queryOptions, useMutation } from '@tanstack/react-query';
 import type { UseQueryOptions, UseQueryResult, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 import { apiClient } from '../lib/client';
-import { toFormData } from '../lib/form-data';
-import type { CreatePetRequest, CreateUserRequest, FileMetadata, FileUploadRequest, FileUploadResponse, HealthStatus, PatchPetRequest, Pet, PetList, PhotoUploadRequest, PhotoUploadResponse, UpdatePetRequest, User } from './types';
-import type { PetStatus, UserRole } from './enums';
+import type { ApiResponse, Order, Pet, User } from './types';
 
 
-// ============ GET /health ============
+// ============ POST /pet ============
 
-export const getGetHealthQueryKey = () => ['getHealth'] as const;
-
-export type GetHealthQueryKey = ReturnType<typeof getGetHealthQueryKey>;
-
-export const getGetHealthQueryOptions = <TData = HealthStatus>(
-  options?: Partial<UseQueryOptions<HealthStatus, Error, TData>>
-) =>
-  queryOptions({
-    queryKey: getGetHealthQueryKey(),
-    queryFn: () => apiClient('/health'),
-    ...options,
-  });
-
-/**
- * Health check endpoint
- * @path GET /health
- */
-export const useGetHealth = <TData = HealthStatus>(
-  options?: Partial<UseQueryOptions<HealthStatus, Error, TData>>
-): UseQueryResult<TData, Error> => {
-  return useQuery(getGetHealthQueryOptions(options));
-};
-
-
-// ============ GET /pets ============
-
-export interface ListPetsParams {
-  limit?: number;
-  offset?: number;
-  status?: PetStatus;
-  tags?: string[];
-}
-
-export const getListPetsQueryKey = (params: ListPetsParams) =>
-  ['listPets', params.limit, params.offset, params.status, params.tags] as const;
-
-export type ListPetsQueryKey = ReturnType<typeof getListPetsQueryKey>;
-
-export const getListPetsQueryOptions = <TData = PetList>(
-  params: ListPetsParams,
-  options?: Partial<UseQueryOptions<PetList, Error, TData>>
-) =>
-  queryOptions({
-    queryKey: getListPetsQueryKey(params),
-    queryFn: () => (() => {
-      const searchParams = new URLSearchParams();
-      if (params.limit !== undefined) searchParams.append('limit', String(params.limit));
-      if (params.offset !== undefined) searchParams.append('offset', String(params.offset));
-      if (params.status !== undefined) searchParams.append('status', String(params.status));
-      if (params.tags !== undefined) searchParams.append('tags', String(params.tags));
-      const query = searchParams.toString();
-      const url = `/pets${query ? `?${query}` : ''}`;
-      return apiClient(url);
-    })(),
-    ...options,
-  });
-
-/**
- * List all pets
- * @path GET /pets
- */
-export const useListPets = <TData = PetList>(
-  params: ListPetsParams,
-  options?: Partial<UseQueryOptions<PetList, Error, TData>>
-): UseQueryResult<TData, Error> => {
-  return useQuery(getListPetsQueryOptions(params, options));
-};
-
-
-// ============ POST /pets ============
-
-export interface CreatePetVariables {
-  data: CreatePetRequest;
+export interface AddPetVariables {
+  data: Pet;
 }
 
 /**
- * Create a new pet
- * @path POST /pets
+ * Add a new pet to the store.
+ * @path POST /pet
  */
-export const useCreatePet = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<Pet, Error, CreatePetVariables, TContext>>
-): UseMutationResult<Pet, Error, CreatePetVariables, TContext> => {
+export const useAddPet = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<Pet, Error, AddPetVariables, TContext>>
+): UseMutationResult<Pet, Error, AddPetVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient('/pets', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<Pet>('/pet', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
 
 
-// ============ GET /pets/{petId} ============
-
-export interface GetPetParams {
-  petId: string;
-}
-
-export const getGetPetQueryKey = (params: GetPetParams) =>
-  ['getPet', params.petId] as const;
-
-export type GetPetQueryKey = ReturnType<typeof getGetPetQueryKey>;
-
-export const getGetPetQueryOptions = <TData = Pet>(
-  params: GetPetParams,
-  options?: Partial<UseQueryOptions<Pet, Error, TData>>
-) =>
-  queryOptions({
-    queryKey: getGetPetQueryKey(params),
-    queryFn: () => (() => {
-      const url = `/pets/${params.petId}`;
-      return apiClient(url);
-    })(),
-    ...options,
-  });
-
-/**
- * Get a pet by ID
- * @path GET /pets/{petId}
- */
-export const useGetPet = <TData = Pet>(
-  params: GetPetParams,
-  options?: Partial<UseQueryOptions<Pet, Error, TData>>
-): UseQueryResult<TData, Error> => {
-  return useQuery(getGetPetQueryOptions(params, options));
-};
-
-
-// ============ PUT /pets/{petId} ============
+// ============ PUT /pet ============
 
 export interface UpdatePetVariables {
-  petId: string;
-  data: UpdatePetRequest;
+  data: Pet;
 }
 
 /**
- * Update a pet
- * @path PUT /pets/{petId}
+ * Update an existing pet.
+ * @path PUT /pet
  */
 export const useUpdatePet = <TContext = unknown>(
   options?: Partial<UseMutationOptions<Pet, Error, UpdatePetVariables, TContext>>
 ): UseMutationResult<Pet, Error, UpdatePetVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient(`/pets/${vars.petId}`, { method: 'PUT', body: vars.data }),
+    mutationFn: (vars) => apiClient<Pet>('/pet', { method: 'PUT', body: vars.data }),
     ...options,
   });
 };
 
 
-// ============ PATCH /pets/{petId} ============
+// ============ GET /pet/findByStatus ============
 
-export interface PatchPetVariables {
-  petId: string;
-  data: PatchPetRequest;
+export interface FindPetsByStatusParams {
+  status: string;
+}
+
+export const getFindPetsByStatusQueryKey = (params: FindPetsByStatusParams) =>
+  ['findPetsByStatus', params.status] as const;
+
+export type FindPetsByStatusQueryKey = ReturnType<typeof getFindPetsByStatusQueryKey>;
+
+export const getFindPetsByStatusQueryOptions = <TData = Pet[]>(
+  params: FindPetsByStatusParams,
+  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
+) =>
+  queryOptions({
+    queryKey: getFindPetsByStatusQueryKey(params),
+    queryFn: () => (() => {
+      const searchParams = new URLSearchParams();
+      if (params.status !== undefined) searchParams.append('status', String(params.status));
+      const query = searchParams.toString();
+      const url = `/pet/findByStatus${query ? `?${query}` : ''}`;
+      return apiClient<Pet[]>(url);
+    })(),
+    ...options,
+  });
+
+/**
+ * Finds Pets by status.
+ * @path GET /pet/findByStatus
+ */
+export const useFindPetsByStatus = <TData = Pet[]>(
+  params: FindPetsByStatusParams,
+  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
+): UseQueryResult<TData, Error> => {
+  return useQuery(getFindPetsByStatusQueryOptions(params, options));
+};
+
+
+// ============ GET /pet/findByTags ============
+
+export interface FindPetsByTagsParams {
+  tags: string[];
+}
+
+export const getFindPetsByTagsQueryKey = (params: FindPetsByTagsParams) =>
+  ['findPetsByTags', params.tags] as const;
+
+export type FindPetsByTagsQueryKey = ReturnType<typeof getFindPetsByTagsQueryKey>;
+
+export const getFindPetsByTagsQueryOptions = <TData = Pet[]>(
+  params: FindPetsByTagsParams,
+  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
+) =>
+  queryOptions({
+    queryKey: getFindPetsByTagsQueryKey(params),
+    queryFn: () => (() => {
+      const searchParams = new URLSearchParams();
+      if (params.tags !== undefined) searchParams.append('tags', String(params.tags));
+      const query = searchParams.toString();
+      const url = `/pet/findByTags${query ? `?${query}` : ''}`;
+      return apiClient<Pet[]>(url);
+    })(),
+    ...options,
+  });
+
+/**
+ * Finds Pets by tags.
+ * @path GET /pet/findByTags
+ */
+export const useFindPetsByTags = <TData = Pet[]>(
+  params: FindPetsByTagsParams,
+  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
+): UseQueryResult<TData, Error> => {
+  return useQuery(getFindPetsByTagsQueryOptions(params, options));
+};
+
+
+// ============ GET /pet/{petId} ============
+
+export interface GetPetByIdParams {
+  petId: number;
+}
+
+export const getGetPetByIdQueryKey = (params: GetPetByIdParams) =>
+  ['getPetById', params.petId] as const;
+
+export type GetPetByIdQueryKey = ReturnType<typeof getGetPetByIdQueryKey>;
+
+export const getGetPetByIdQueryOptions = <TData = Pet>(
+  params: GetPetByIdParams,
+  options?: Partial<UseQueryOptions<Pet, Error, TData>>
+) =>
+  queryOptions({
+    queryKey: getGetPetByIdQueryKey(params),
+    queryFn: () => (() => {
+      const url = `/pet/${params.petId}`;
+      return apiClient<Pet>(url);
+    })(),
+    ...options,
+  });
+
+/**
+ * Find pet by ID.
+ * @path GET /pet/{petId}
+ */
+export const useGetPetById = <TData = Pet>(
+  params: GetPetByIdParams,
+  options?: Partial<UseQueryOptions<Pet, Error, TData>>
+): UseQueryResult<TData, Error> => {
+  return useQuery(getGetPetByIdQueryOptions(params, options));
+};
+
+
+// ============ POST /pet/{petId} ============
+
+export interface UpdatePetWithFormVariables {
+  petId: number;
 }
 
 /**
- * Partially update a pet
- * @path PATCH /pets/{petId}
+ * Updates a pet in the store with form data.
+ * @path POST /pet/{petId}
  */
-export const usePatchPet = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<Pet, Error, PatchPetVariables, TContext>>
-): UseMutationResult<Pet, Error, PatchPetVariables, TContext> => {
+export const useUpdatePetWithForm = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<Pet, Error, UpdatePetWithFormVariables, TContext>>
+): UseMutationResult<Pet, Error, UpdatePetWithFormVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient(`/pets/${vars.petId}`, { method: 'PATCH', body: vars.data }),
+    mutationFn: (vars) => apiClient<Pet>(`/pet/${vars.petId}`, { method: 'POST' }),
     ...options,
   });
 };
 
 
-// ============ DELETE /pets/{petId} ============
+// ============ DELETE /pet/{petId} ============
 
 export interface DeletePetVariables {
-  petId: string;
+  petId: number;
 }
 
 /**
- * Delete a pet
- * @path DELETE /pets/{petId}
+ * Deletes a pet.
+ * @path DELETE /pet/{petId}
  */
 export const useDeletePet = <TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, Error, DeletePetVariables, TContext>>
 ): UseMutationResult<unknown, Error, DeletePetVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient(`/pets/${vars.petId}`, { method: 'DELETE' }),
+    mutationFn: (vars) => apiClient<unknown>(`/pet/${vars.petId}`, { method: 'DELETE' }),
     ...options,
   });
 };
 
 
-// ============ POST /pets/{petId}/photo ============
+// ============ POST /pet/{petId}/uploadImage ============
 
-export interface UploadPetPhotoVariables {
-  petId: string;
-  data: PhotoUploadRequest;
+export interface UploadFileVariables {
+  petId: number;
+  data: unknown;
 }
 
 /**
- * Upload a pet photo
- * @path POST /pets/{petId}/photo
+ * Uploads an image.
+ * @path POST /pet/{petId}/uploadImage
  */
-export const useUploadPetPhoto = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<PhotoUploadResponse, Error, UploadPetPhotoVariables, TContext>>
-): UseMutationResult<PhotoUploadResponse, Error, UploadPetPhotoVariables, TContext> => {
+export const useUploadFile = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<ApiResponse, Error, UploadFileVariables, TContext>>
+): UseMutationResult<ApiResponse, Error, UploadFileVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient(`/pets/${vars.petId}/photo`, { method: 'POST', body: toFormData(vars.data, { path: '/pets/{petId}/photo', method: 'POST' }) }),
+    mutationFn: (vars) => apiClient<ApiResponse>(`/pet/${vars.petId}/uploadImage`, { method: 'POST', body: vars.data }),
     ...options,
   });
 };
 
 
-// ============ POST /pets/search ============
+// ============ GET /store/inventory ============
 
-export const getSearchPetsQueryKey = () => ['searchPets'] as const;
+export const getGetInventoryQueryKey = () => ['getInventory'] as const;
 
-export type SearchPetsQueryKey = ReturnType<typeof getSearchPetsQueryKey>;
+export type GetInventoryQueryKey = ReturnType<typeof getGetInventoryQueryKey>;
 
-export const getSearchPetsQueryOptions = <TData = PetList>(
-  options?: Partial<UseQueryOptions<PetList, Error, TData>>
+export const getGetInventoryQueryOptions = <TData = unknown>(
+  options?: Partial<UseQueryOptions<unknown, Error, TData>>
 ) =>
   queryOptions({
-    queryKey: getSearchPetsQueryKey(),
-    queryFn: () => apiClient('/pets/search'),
+    queryKey: getGetInventoryQueryKey(),
+    queryFn: () => apiClient<unknown>('/store/inventory'),
     ...options,
   });
 
 /**
- * Search pets with complex criteria
- * @path POST /pets/search
+ * Returns pet inventories by status.
+ * @path GET /store/inventory
  */
-export const useSearchPets = <TData = PetList>(
-  options?: Partial<UseQueryOptions<PetList, Error, TData>>
+export const useGetInventory = <TData = unknown>(
+  options?: Partial<UseQueryOptions<unknown, Error, TData>>
 ): UseQueryResult<TData, Error> => {
-  return useQuery(getSearchPetsQueryOptions(options));
+  return useQuery(getGetInventoryQueryOptions(options));
 };
 
 
-// ============ POST /pets/bulk ============
+// ============ POST /store/order ============
 
-export interface CreatePetsBulkVariables {
-  data: CreatePetRequest[];
+export interface PlaceOrderVariables {
+  data: Order;
 }
 
 /**
- * Create multiple pets
- * @path POST /pets/bulk
+ * Place an order for a pet.
+ * @path POST /store/order
  */
-export const useCreatePetsBulk = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<Pet[], Error, CreatePetsBulkVariables, TContext>>
-): UseMutationResult<Pet[], Error, CreatePetsBulkVariables, TContext> => {
+export const usePlaceOrder = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<Order, Error, PlaceOrderVariables, TContext>>
+): UseMutationResult<Order, Error, PlaceOrderVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient('/pets/bulk', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<Order>('/store/order', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
 
 
-// ============ GET /users ============
+// ============ GET /store/order/{orderId} ============
 
-export interface ListUsersParams {
-  role?: UserRole;
+export interface GetOrderByIdParams {
+  orderId: number;
 }
 
-export const getListUsersQueryKey = (params: ListUsersParams) =>
-  ['listUsers', params.role] as const;
+export const getGetOrderByIdQueryKey = (params: GetOrderByIdParams) =>
+  ['getOrderById', params.orderId] as const;
 
-export type ListUsersQueryKey = ReturnType<typeof getListUsersQueryKey>;
+export type GetOrderByIdQueryKey = ReturnType<typeof getGetOrderByIdQueryKey>;
 
-export const getListUsersQueryOptions = <TData = User[]>(
-  params: ListUsersParams,
-  options?: Partial<UseQueryOptions<User[], Error, TData>>
+export const getGetOrderByIdQueryOptions = <TData = Order>(
+  params: GetOrderByIdParams,
+  options?: Partial<UseQueryOptions<Order, Error, TData>>
 ) =>
   queryOptions({
-    queryKey: getListUsersQueryKey(params),
+    queryKey: getGetOrderByIdQueryKey(params),
     queryFn: () => (() => {
-      const searchParams = new URLSearchParams();
-      if (params.role !== undefined) searchParams.append('role', String(params.role));
-      const query = searchParams.toString();
-      const url = `/users${query ? `?${query}` : ''}`;
-      return apiClient(url);
+      const url = `/store/order/${params.orderId}`;
+      return apiClient<Order>(url);
     })(),
     ...options,
   });
 
 /**
- * List all users
- * @path GET /users
+ * Find purchase order by ID.
+ * @path GET /store/order/{orderId}
  */
-export const useListUsers = <TData = User[]>(
-  params: ListUsersParams,
-  options?: Partial<UseQueryOptions<User[], Error, TData>>
+export const useGetOrderById = <TData = Order>(
+  params: GetOrderByIdParams,
+  options?: Partial<UseQueryOptions<Order, Error, TData>>
 ): UseQueryResult<TData, Error> => {
-  return useQuery(getListUsersQueryOptions(params, options));
+  return useQuery(getGetOrderByIdQueryOptions(params, options));
 };
 
 
-// ============ POST /users ============
+// ============ DELETE /store/order/{orderId} ============
 
-export interface CreateUserVariables {
-  data: CreateUserRequest;
+export interface DeleteOrderVariables {
+  orderId: number;
 }
 
 /**
- * Create a new user
- * @path POST /users
+ * Delete purchase order by identifier.
+ * @path DELETE /store/order/{orderId}
+ */
+export const useDeleteOrder = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<unknown, Error, DeleteOrderVariables, TContext>>
+): UseMutationResult<unknown, Error, DeleteOrderVariables, TContext> => {
+  return useMutation({
+    mutationFn: (vars) => apiClient<unknown>(`/store/order/${vars.orderId}`, { method: 'DELETE' }),
+    ...options,
+  });
+};
+
+
+// ============ POST /user ============
+
+export interface CreateUserVariables {
+  data: User;
+}
+
+/**
+ * Create user.
+ * @path POST /user
  */
 export const useCreateUser = <TContext = unknown>(
   options?: Partial<UseMutationOptions<User, Error, CreateUserVariables, TContext>>
 ): UseMutationResult<User, Error, CreateUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient('/users', { method: 'POST', body: vars.data }),
+    mutationFn: (vars) => apiClient<User>('/user', { method: 'POST', body: vars.data }),
     ...options,
   });
 };
 
 
-// ============ GET /users/{userId} ============
+// ============ POST /user/createWithList ============
 
-export interface GetUserParams {
-  userId: number;
+export interface CreateUsersWithListInputVariables {
+  data: User[];
 }
 
-export const getGetUserQueryKey = (params: GetUserParams) =>
-  ['getUser', params.userId] as const;
+/**
+ * Creates list of users with given input array.
+ * @path POST /user/createWithList
+ */
+export const useCreateUsersWithListInput = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<User, Error, CreateUsersWithListInputVariables, TContext>>
+): UseMutationResult<User, Error, CreateUsersWithListInputVariables, TContext> => {
+  return useMutation({
+    mutationFn: (vars) => apiClient<User>('/user/createWithList', { method: 'POST', body: vars.data }),
+    ...options,
+  });
+};
 
-export type GetUserQueryKey = ReturnType<typeof getGetUserQueryKey>;
 
-export const getGetUserQueryOptions = <TData = User>(
-  params: GetUserParams,
-  options?: Partial<UseQueryOptions<User, Error, TData>>
+// ============ GET /user/login ============
+
+export interface LoginUserParams {
+  username?: string;
+  password?: string;
+}
+
+export const getLoginUserQueryKey = (params: LoginUserParams) =>
+  ['loginUser', params.username, params.password] as const;
+
+export type LoginUserQueryKey = ReturnType<typeof getLoginUserQueryKey>;
+
+export const getLoginUserQueryOptions = <TData = string>(
+  params: LoginUserParams,
+  options?: Partial<UseQueryOptions<string, Error, TData>>
 ) =>
   queryOptions({
-    queryKey: getGetUserQueryKey(params),
+    queryKey: getLoginUserQueryKey(params),
     queryFn: () => (() => {
-      const url = `/users/${params.userId}`;
-      return apiClient(url);
+      const searchParams = new URLSearchParams();
+      if (params.username !== undefined) searchParams.append('username', String(params.username));
+      if (params.password !== undefined) searchParams.append('password', String(params.password));
+      const query = searchParams.toString();
+      const url = `/user/login${query ? `?${query}` : ''}`;
+      return apiClient<string>(url);
     })(),
     ...options,
   });
 
 /**
- * Get a user by ID
- * @path GET /users/{userId}
+ * Logs user into the system.
+ * @path GET /user/login
  */
-export const useGetUser = <TData = User>(
-  params: GetUserParams,
-  options?: Partial<UseQueryOptions<User, Error, TData>>
+export const useLoginUser = <TData = string>(
+  params: LoginUserParams,
+  options?: Partial<UseQueryOptions<string, Error, TData>>
 ): UseQueryResult<TData, Error> => {
-  return useQuery(getGetUserQueryOptions(params, options));
+  return useQuery(getLoginUserQueryOptions(params, options));
 };
 
 
-// ============ DELETE /users/{userId} ============
+// ============ GET /user/logout ============
 
-export interface DeleteUserVariables {
-  userId: number;
+export const getLogoutUserQueryKey = () => ['logoutUser'] as const;
+
+export type LogoutUserQueryKey = ReturnType<typeof getLogoutUserQueryKey>;
+
+export const getLogoutUserQueryOptions = <TData = unknown>(
+  options?: Partial<UseQueryOptions<unknown, Error, TData>>
+) =>
+  queryOptions({
+    queryKey: getLogoutUserQueryKey(),
+    queryFn: () => apiClient<unknown>('/user/logout'),
+    ...options,
+  });
+
+/**
+ * Logs out current logged in user session.
+ * @path GET /user/logout
+ */
+export const useLogoutUser = <TData = unknown>(
+  options?: Partial<UseQueryOptions<unknown, Error, TData>>
+): UseQueryResult<TData, Error> => {
+  return useQuery(getLogoutUserQueryOptions(options));
+};
+
+
+// ============ GET /user/{username} ============
+
+export interface GetUserByNameParams {
+  username: string;
+}
+
+export const getGetUserByNameQueryKey = (params: GetUserByNameParams) =>
+  ['getUserByName', params.username] as const;
+
+export type GetUserByNameQueryKey = ReturnType<typeof getGetUserByNameQueryKey>;
+
+export const getGetUserByNameQueryOptions = <TData = User>(
+  params: GetUserByNameParams,
+  options?: Partial<UseQueryOptions<User, Error, TData>>
+) =>
+  queryOptions({
+    queryKey: getGetUserByNameQueryKey(params),
+    queryFn: () => (() => {
+      const url = `/user/${params.username}`;
+      return apiClient<User>(url);
+    })(),
+    ...options,
+  });
+
+/**
+ * Get user by user name.
+ * @path GET /user/{username}
+ */
+export const useGetUserByName = <TData = User>(
+  params: GetUserByNameParams,
+  options?: Partial<UseQueryOptions<User, Error, TData>>
+): UseQueryResult<TData, Error> => {
+  return useQuery(getGetUserByNameQueryOptions(params, options));
+};
+
+
+// ============ PUT /user/{username} ============
+
+export interface UpdateUserVariables {
+  username: string;
+  data: User;
 }
 
 /**
- * Delete a user
- * @path DELETE /users/{userId}
+ * Update user resource.
+ * @path PUT /user/{username}
+ */
+export const useUpdateUser = <TContext = unknown>(
+  options?: Partial<UseMutationOptions<unknown, Error, UpdateUserVariables, TContext>>
+): UseMutationResult<unknown, Error, UpdateUserVariables, TContext> => {
+  return useMutation({
+    mutationFn: (vars) => apiClient<unknown>(`/user/${vars.username}`, { method: 'PUT', body: vars.data }),
+    ...options,
+  });
+};
+
+
+// ============ DELETE /user/{username} ============
+
+export interface DeleteUserVariables {
+  username: string;
+}
+
+/**
+ * Delete user resource.
+ * @path DELETE /user/{username}
  */
 export const useDeleteUser = <TContext = unknown>(
   options?: Partial<UseMutationOptions<unknown, Error, DeleteUserVariables, TContext>>
 ): UseMutationResult<unknown, Error, DeleteUserVariables, TContext> => {
   return useMutation({
-    mutationFn: (vars) => apiClient(`/users/${vars.userId}`, { method: 'DELETE' }),
-    ...options,
-  });
-};
-
-
-// ============ GET /users/{userId}/pets ============
-
-export interface GetUserPetsParams {
-  userId: number;
-  status?: PetStatus;
-}
-
-export const getGetUserPetsQueryKey = (params: GetUserPetsParams) =>
-  ['getUserPets', params.userId, params.status] as const;
-
-export type GetUserPetsQueryKey = ReturnType<typeof getGetUserPetsQueryKey>;
-
-export const getGetUserPetsQueryOptions = <TData = Pet[]>(
-  params: GetUserPetsParams,
-  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
-) =>
-  queryOptions({
-    queryKey: getGetUserPetsQueryKey(params),
-    queryFn: () => (() => {
-      const searchParams = new URLSearchParams();
-      if (params.status !== undefined) searchParams.append('status', String(params.status));
-      const query = searchParams.toString();
-      const url = `/users/${params.userId}/pets${query ? `?${query}` : ''}`;
-      return apiClient(url);
-    })(),
-    ...options,
-  });
-
-/**
- * Get pets owned by a user
- * @path GET /users/{userId}/pets
- */
-export const useGetUserPets = <TData = Pet[]>(
-  params: GetUserPetsParams,
-  options?: Partial<UseQueryOptions<Pet[], Error, TData>>
-): UseQueryResult<TData, Error> => {
-  return useQuery(getGetUserPetsQueryOptions(params, options));
-};
-
-
-// ============ POST /files/upload ============
-
-export interface UploadFileVariables {
-  data: FileUploadRequest;
-}
-
-/**
- * Upload a file
- * @path POST /files/upload
- */
-export const useUploadFile = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<FileUploadResponse, Error, UploadFileVariables, TContext>>
-): UseMutationResult<FileUploadResponse, Error, UploadFileVariables, TContext> => {
-  return useMutation({
-    mutationFn: (vars) => apiClient('/files/upload', { method: 'POST', body: toFormData(vars.data, { path: '/files/upload', method: 'POST' }) }),
-    ...options,
-  });
-};
-
-
-// ============ GET /files/{fileId} ============
-
-export interface GetFileParams {
-  fileId: string;
-}
-
-export const getGetFileQueryKey = (params: GetFileParams) =>
-  ['getFile', params.fileId] as const;
-
-export type GetFileQueryKey = ReturnType<typeof getGetFileQueryKey>;
-
-export const getGetFileQueryOptions = <TData = FileMetadata>(
-  params: GetFileParams,
-  options?: Partial<UseQueryOptions<FileMetadata, Error, TData>>
-) =>
-  queryOptions({
-    queryKey: getGetFileQueryKey(params),
-    queryFn: () => (() => {
-      const url = `/files/${params.fileId}`;
-      return apiClient(url);
-    })(),
-    ...options,
-  });
-
-/**
- * Get file metadata
- * @path GET /files/{fileId}
- */
-export const useGetFile = <TData = FileMetadata>(
-  params: GetFileParams,
-  options?: Partial<UseQueryOptions<FileMetadata, Error, TData>>
-): UseQueryResult<TData, Error> => {
-  return useQuery(getGetFileQueryOptions(params, options));
-};
-
-
-// ============ DELETE /files/{fileId} ============
-
-export interface DeleteFileVariables {
-  fileId: string;
-}
-
-/**
- * Delete a file
- * @path DELETE /files/{fileId}
- */
-export const useDeleteFile = <TContext = unknown>(
-  options?: Partial<UseMutationOptions<unknown, Error, DeleteFileVariables, TContext>>
-): UseMutationResult<unknown, Error, DeleteFileVariables, TContext> => {
-  return useMutation({
-    mutationFn: (vars) => apiClient(`/files/${vars.fileId}`, { method: 'DELETE' }),
+    mutationFn: (vars) => apiClient<unknown>(`/user/${vars.username}`, { method: 'DELETE' }),
     ...options,
   });
 };

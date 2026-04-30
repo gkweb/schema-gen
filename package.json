@@ -18,9 +18,16 @@
     "schema-gen": "node packages/cli/dist/bin.mjs",
     "docs:dev": "pnpm --filter @schema-gen/docs dev",
     "docs:build": "pnpm --filter @schema-gen/docs build",
-    "docs:preview": "pnpm --filter @schema-gen/docs preview"
+    "docs:preview": "pnpm --filter @schema-gen/docs preview",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "build:packages": "pnpm --filter './packages/*' build",
+    "release": "pnpm build:packages && pnpm --filter @schema-gen/core artifacts && pnpm --filter @schema-gen/core prepublish:napi && pnpm changeset:publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "0.5.2",
+    "@changesets/cli": "2.29.8",
     "@types/node": "22.10.0",
     "oxlint": "0.15.0",
     "prettier": "3.4.2",

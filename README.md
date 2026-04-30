@@ -87,13 +87,19 @@ style:
 | `typescript-types` | TypeScript interfaces and type aliases |
 | `typescript-enums` | TypeScript enums or union types |
 | `constants` | Endpoint paths and HTTP method constants |
+| `request-paths` | Per-endpoint typed path-builder functions (tree-shakable) |
+
+## Official Plugins
+
+| Package | Description |
+|---------|-------------|
+| `@schema-gen/plugin-react-query-v5` | TanStack React Query v5 hooks (queries, mutations, query keys/options, custom fetch, multipart/form-data, per-operation overrides) |
+| `@schema-gen/plugin-vue-query-v4` | TanStack Vue Query v4 composables (parity with React Query plugin) |
 
 ### Coming Soon
 
-- `react-query` — React Query hooks
-- `vue-query` — Vue Query composables
-- `zod-schemas` — Zod validation schemas
-- `msw-handlers` — MSW mock handlers
+- `@schema-gen/plugin-zod` — Zod validation schemas
+- `@schema-gen/plugin-msw` — MSW mock handlers
 
 ## Custom Plugins
 

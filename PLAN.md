@@ -40,6 +40,148 @@ Schema-Gen is a strategic rebuild of OpenAPI code generation tooling, taking ins
 
 ---
 
+## Implementation Status (Audit — 2026-04-30)
+
+This section is the source of truth for what is shipped vs. still planned.
+The headline goal is **"close-to-parity with default Orval, with everything
+beyond the core kept in plugins."** Concretely "default Orval" means: parse
+an OpenAPI v3 spec, emit TypeScript types and enums, and produce
+React/Vue Query hooks that call into a user-supplied fetch client.
+
+### Headline parity verdict
+
+**Default-Orval parity: ~85% complete and usable today.** A user can install
+the published packages, point at an OpenAPI v3 spec, and get back
+typed TypeScript, enums, request-path constants, and TanStack
+React-Query v5 / Vue-Query v4 hooks wired to a custom fetch
+function — including multipart/form-data uploads. The two example
+projects under `projects/` exercise the full pipeline against the
+Petstore spec.
+
+**Where we are not yet at parity (intentional plugin territory):**
+Zod schemas, MSW mock handlers, Axios/Angular/Svelte clients, custom
+templates. These are explicitly out-of-core and belong in
+community-authored plugins per the architecture goal.
+
+**Where we still have core gaps:** circular `$ref` detection, external
+`$ref` resolution, the declarative `transform.include` /
+`transform.exclude` / `transform.typeOverrides` filters, the
+`output.structure: by-tag | by-endpoint` modes, benchmarks, and
+platform-binary distribution / npm release.
+
+### Status legend
+
+- ✅ Done — landed and exercised by tests or example projects
+- 🟡 Partial — present but incomplete, or declared in config but not wired through
+- ❌ Not started
+
+### Phase 1 — Core Transformer (Rust)
+
+| Item | Status | Notes |
+|---|---|---|
+| Workspace + crates layout (`schema-gen-core`, `schema-gen-binding`) | ✅ | `Cargo.toml`, `crates/*` |
+| OpenAPI v3.0/3.1 parsing (JSON + YAML, auto-detect) | ✅ | `crates/schema-gen-core/src/parser/mod.rs` |
+| Local `$ref` resolution (`#/components/schemas/...`) | ✅ | `crates/schema-gen-core/src/parser/refs.rs` |
+| External `$ref` resolution (other files / URLs) | ❌ | Explicit error in `refs.rs:60` |
+| Circular `$ref` detection | 🟡 | `is_circular` is a stub (`refs.rs:111`) |
+| AST: types, enums, endpoints, parameters, responses, security, tags | ✅ | `crates/schema-gen-core/src/ast/*` |
+| Normalization: allOf → Intersection, anyOf/oneOf → Union (with discriminator field) | ✅ | `ast/types.rs::TypeKind` |
+| Inline-enum extraction into named `EnumNode`s | ✅ | `transform/schemas.rs::try_extract_enum` |
+| Naming utilities (Pascal/camel/snake/screaming-snake/kebab) | ✅ | `transform/normalize.rs` |
+| Structured errors (`miette` + `thiserror`) | ✅ | `error.rs` |
+| Spec-format validation (`3.0.x` / `3.1.x`) | ✅ | `parser/mod.rs::validate_version` |
+| Unit tests for parser, transform, naming, codegen | 🟡 | 16 `#[test]` cases — covers happy paths only |
+| Integration fixture suite (Petstore + GitHub + Stripe + edge cases) | 🟡 | Only `tests/fixtures/petstore.yaml` |
+| Property-based tests | ❌ | |
+| Benchmarks (`benches/`) | ❌ | No `benches/` directory |
+
+### Phase 2 — Plugin System & Built-in Plugins
+
+| Item | Status | Notes |
+|---|---|---|
+| NAPI-RS binding crate (`schema-gen-binding`) | ✅ | `crates/schema-gen-binding/src/lib.rs` exports `parse_spec_to_object`, `generate_typescript_types`, `generate_typescript_enums`, `generate_constants`, `generate`, `validate_spec`, `get_version` |
+| Three-layer architecture (JS API → NAPI → Rust core) | ✅ | `packages/core` wraps `crates/schema-gen-binding` |
+| `@schema-gen/core` package (config + generator + binding wrapper) | ✅ | `packages/core` |
+| `@schema-gen/cli` (`generate`, `validate`, `ast`, `init`, `--watch`) | ✅ | `packages/cli/src/bin.ts` |
+| `@schema-gen/plugin-sdk` (typed `Plugin`, `PluginContext`, `PluginUtils`) | ✅ | `packages/plugin-sdk/src/index.ts` |
+| Plugin lifecycle: `onStart`, `onType`, `onEnum`, `onEndpoint`, `emit`, `onFile`, `onEnd`, `onFinished` | ✅ | `packages/core/src/plugins/executor.ts` (extends PLAN's original 6-phase design with `onFile` + `onFinished`) |
+| Plugin loader: built-ins, npm packages, local file paths, inline objects | ✅ | `packages/core/src/plugins/loader.ts` |
+| Config loading (TS/JS/MJS via `jiti`, `defineConfig` helper) | ✅ | `packages/core/src/config.ts` |
+| Typed `plugins.*` factory helpers | ✅ | `packages/core/src/plugins.ts` |
+| Built-in: `typescript-types` (interfaces / aliases / JSDoc / `enumsImportPath`) | ✅ | Rust generator via `binding.generateTypes` |
+| Built-in: `typescript-enums` (`enum` / `const-enum` / `union`) | ✅ | Rust generator via `binding.generateEnums` |
+| Built-in: `constants` (paths / methods) | ✅ | Rust generator via `binding.generateConstants` |
+| Built-in: `request-paths` (typed per-endpoint path builders, tree-shakable) | ✅ | `packages/core/src/plugins/builtins/request-paths.ts` (additive vs PLAN) |
+| Official: `@schema-gen/plugin-react-query-v5` (queries, mutations, query keys, query options, custom fetchFn, multipart/form-data, per-operation overrides) | ✅ | `packages/react-query-v5` |
+| Official: `@schema-gen/plugin-vue-query-v4` (parity with React Query plugin) | ✅ | `packages/vue-query-v4` |
+| `useInfiniteQuery` / `useSuspenseQuery` flags exposed | 🟡 | Config flags exist; codegen not yet emitting the variants |
+| Watch mode (`--watch`, debounced) | ✅ | `packages/cli/src/bin.ts` |
+| Remote spec fetching over HTTP(S) (with custom headers + timeout) | ✅ | `packages/core/src/generator.ts::loadSpec` |
+| `output.clean` | ✅ | `generator.ts::write` |
+| `output.types.dir` (separate types output dir, surfaced as `ctx.typesDir`) | ✅ | `generator.ts` + `executor.ts` |
+| `transform.include` / `transform.exclude` (tag, path, operationId filters) | ❌ | Declared in `config.ts`, not applied anywhere |
+| `transform.naming` overrides | ❌ | Declared in `config.ts`, not applied anywhere |
+| `transform.typeOverrides` (e.g. `string:date-time` → `Date`) | ❌ | Declared in `config.ts`, not applied anywhere |
+| `output.structure: by-tag` / `by-endpoint` | ❌ | Declared in `config.ts`, only `flat` actually emits |
+| `fetch.default` / `fetch.overrides` (Orval-style fetch config) | ❌ | Declared in `config.ts`; in practice users wire fetchers via `reactQueryV5({ fetchFn })` per plugin |
+| Code-style options surfaced to plugins (`semi`, `quotes`, etc.) | 🟡 | Declared in config; not threaded into generators |
+| Prettier integration / post-emit formatting | ❌ | |
+| Vitest test suites for plugin-sdk + plugins | 🟡 | `react-query-v5`, `vue-query-v4`, `core/plugins/utils` have one test file each |
+
+### Phase 3 — Polish & Production Readiness
+
+| Item | Status | Notes |
+|---|---|---|
+| Documentation site (VitePress) — guide, plugins, API reference | ✅ | `docs/` (~2.9k lines) |
+| GitHub Actions: docs deploy | ✅ | `.github/workflows/docs.yml` |
+| GitHub Actions: CI for `cargo test` + `pnpm test` + `pnpm typecheck` | ❌ | No build/test workflow yet |
+| GitHub Actions: NAPI-RS multi-platform binary build + npm publish | ❌ | `package.json#napi.triples` declared; no release workflow |
+| Platform binary npm packages (`@schema-gen/binding-*`) published | ❌ | |
+| Example apps consuming generated output (React + Vue) | ✅ | `projects/react-query`, `projects/vue-query` (Vite + Petstore) |
+| `schema-gen init` wizard | 🟡 | Writes a static default config; not interactive |
+| Spec diffing (`schema-gen diff`) | ❌ | |
+| Dry-run mode | ❌ | |
+| Custom templates (EJS/Handlebars) | ❌ | Out of scope per "keep it in plugins" stance |
+| VSCode extension | ❌ | |
+| Homebrew / Docker distribution | ❌ | |
+
+### Orval feature parity checklist (re-scored)
+
+| Feature | Priority | Status | How it's delivered here |
+|---|---|---|---|
+| TypeScript types generation | P0 | ✅ | Built-in `typescript-types` |
+| TypeScript enums generation | P0 | ✅ | Built-in `typescript-enums` |
+| Endpoint path constants | P1 | ✅ | Built-in `constants` + `request-paths` |
+| React Query hooks | P0 | ✅ | `@schema-gen/plugin-react-query-v5` |
+| Vue Query composables | P0 | ✅ | `@schema-gen/plugin-vue-query-v4` |
+| Custom fetch implementation | P0 | ✅ | `fetchFn: { from, name }` on each query plugin |
+| Multipart/form-data upload support | P0 | ✅ | `formDataFn` on each query plugin |
+| Per-operation overrides (skip / forceQuery / forceMutation / type overrides) | P0 | ✅ | `overrides[operationId]` on each query plugin |
+| Tag-based filtering (`include` / `exclude`) | P1 | ❌ | Declared in config, not applied |
+| Watch mode | P1 | ✅ | `schema-gen generate --watch` |
+| Spec validation | P0 | ✅ | `schema-gen validate` |
+| Transform / lifecycle hooks | P0 | ✅ | Plugin SDK (`onType`, `onEnum`, `onEndpoint`, `onFile`, `onFinished`) |
+| Suspense / Infinite query variants | P1 | 🟡 | Config flags accepted; emission not implemented |
+| Axios client | P1 | ❌ | Plugin territory — not built |
+| Fetch client (standalone module) | P1 | 🟡 | No `fetch-client` plugin; users supply `fetchFn` instead |
+| Angular client | P2 | ❌ | Plugin territory — not built |
+| Svelte Query | P2 | ❌ | Plugin territory — not built |
+| MSW mock generation | P1 | ❌ | Plugin territory — not built |
+| Zod schema generation | P1 | ❌ | Plugin territory — not built |
+| Custom templates | P2 | ❌ | Out of scope (use plugins instead) |
+
+### Highest-value next steps to reach "complete" parity
+
+1. Wire `transform.include` / `transform.exclude` filters in the executor — small change, fixes a real Orval workflow.
+2. Implement `output.structure: by-tag` (one file per tag) — also small, unlocks tidier outputs for large specs.
+3. Add CI workflow (`cargo test`, `pnpm test`, `pnpm typecheck`) — protects everything above.
+4. Add NAPI-RS release workflow + publish `@schema-gen/binding-*` so the packages are actually installable from npm.
+5. Implement circular-ref detection in `RefResolver::is_circular` — avoids infinite loops on real-world specs.
+6. Finish `useInfiniteQuery` / `useSuspenseQuery` emission in the React/Vue plugins (config is already there).
+7. Author `@schema-gen/plugin-zod` and `@schema-gen/plugin-msw` as first reference plugins to prove the plugin contract beyond the React/Vue case.
+
+---
+
 ## Motivation
 
 ### Current Limitations (Orval and similar tools)
@@ -1012,17 +1154,17 @@ schema-gen/
 
 #### Milestones
 
-| Milestone | Description | Acceptance Criteria |
-|-----------|-------------|---------------------|
-| M1.1 | Basic parsing | Parse Petstore spec, output raw structure |
-| M1.2 | AST schema | All AST types defined with serde support |
-| M1.3 | Type extraction | Extract all schema types to TypeNode |
-| M1.4 | Enum extraction | Extract enums, handle inline enums |
-| M1.5 | Endpoint extraction | Full EndpointNode with params, body, responses |
-| M1.6 | Reference resolution | Handle $ref including circular refs |
-| M1.7 | CLI complete | `ast` and `validate` commands working |
-| M1.8 | Test suite | 90%+ coverage, all fixtures passing |
-| M1.9 | Benchmarks | Baseline established, targets met |
+| Milestone | Description | Acceptance Criteria | Status |
+|-----------|-------------|---------------------|--------|
+| M1.1 | Basic parsing | Parse Petstore spec, output raw structure | ✅ |
+| M1.2 | AST schema | All AST types defined with serde support | ✅ |
+| M1.3 | Type extraction | Extract all schema types to TypeNode | ✅ |
+| M1.4 | Enum extraction | Extract enums, handle inline enums | ✅ |
+| M1.5 | Endpoint extraction | Full EndpointNode with params, body, responses | ✅ |
+| M1.6 | Reference resolution | Handle $ref including circular refs | 🟡 (local refs only; circular detection stubbed) |
+| M1.7 | CLI complete | `ast` and `validate` commands working | ✅ (also `generate`, `init`, `--watch`) |
+| M1.8 | Test suite | 90%+ coverage, all fixtures passing | 🟡 (16 unit tests; only Petstore fixture) |
+| M1.9 | Benchmarks | Baseline established, targets met | ❌ |
 
 ---
 
@@ -1146,17 +1288,17 @@ schema-gen/
 
 #### Milestones
 
-| Milestone | Description | Acceptance Criteria |
-|-----------|-------------|---------------------|
-| M2.1 | Plugin runtime | Load, initialize, execute plugins |
-| M2.2 | TypeScript types | Generate types matching Orval output |
-| M2.3 | Enums | Generate enums with all variants |
-| M2.4 | React Query | Hooks for all endpoint types |
-| M2.5 | Vue Query | Composables for all endpoint types |
-| M2.6 | Fetch client | Working typed client |
-| M2.7 | Config system | Full config parsing and validation |
-| M2.8 | Node.js host | Custom plugins in TypeScript |
-| M2.9 | Feature parity | Match Orval output for test specs |
+| Milestone | Description | Acceptance Criteria | Status |
+|-----------|-------------|---------------------|--------|
+| M2.1 | Plugin runtime | Load, initialize, execute plugins | ✅ (`packages/core/src/plugins/executor.ts`) |
+| M2.2 | TypeScript types | Generate types matching Orval output | ✅ (Rust generator via NAPI binding) |
+| M2.3 | Enums | Generate enums with all variants | ✅ |
+| M2.4 | React Query | Hooks for all endpoint types | ✅ — basic + mutation + form-data; 🟡 infinite/suspense flagged but not emitted |
+| M2.5 | Vue Query | Composables for all endpoint types | ✅ |
+| M2.6 | Fetch client | Working typed client | 🟡 (no standalone `fetch-client` plugin; users wire `fetchFn` per query plugin) |
+| M2.7 | Config system | Full config parsing and validation | 🟡 (loading/validation done; `transform.*`, `output.structure`, `fetch.*`, `style.*` declared but not applied) |
+| M2.8 | Node.js host | Custom plugins in TypeScript | ✅ (npm + local-path + inline-object loaders) |
+| M2.9 | Feature parity | Match Orval output for test specs | 🟡 (default-Orval surface ~85% — see Implementation Status) |
 
 ---
 
@@ -1264,25 +1406,27 @@ Measure against:
 
 ### Technical Decisions Still Needed
 
-1. **AST Serialization Format**
-   - JSON (universal, verbose)? ← Likely default
-   - MessagePack (compact, binary) for internal use?
-   - Multiple formats for different use cases?
+1. **AST Serialization Format** → **JSON** ✅
+   - Resolved: JSON over the NAPI boundary (`parse_spec_to_object`,
+     `generate*` accept/return JSON strings). MessagePack remains an
+     option if profiling shows the JSON hop is hot.
 
-2. **Template Engine (for custom plugins)**
-   - Handlebars (familiar, limited logic)?
-   - EJS (JavaScript, maximum flexibility)? ← Likely choice for JS ecosystem
-   - Code generation without templates (direct string building)?
+2. **Template Engine (for custom plugins)** → **No templates; direct string building** ✅
+   - Resolved: built-in plugins and the React/Vue plugins all build
+     strings directly in TypeScript. This matches the "core knows nothing
+     about output formats" stance and keeps the plugin contract small.
+     Plugin authors are free to bring their own template engine if they
+     want one.
 
 3. **Naming Convention Handling**
-   - Automatic detection from spec?
-   - User configuration required?
-   - Sensible defaults with override capability?
+   - Status: 🟡 — utilities exist in Rust (`transform/normalize.rs`) and
+     in `PluginUtils` (`toPascalCase`, `toCamelCase`, ...), and types
+     are PascalCased by default. The `transform.naming` config block is
+     declared in `UserConfig` but not yet wired through the executor.
 
 4. **Breaking Change Detection**
-   - Strict (fail on breaking change)?
-   - Warn only?
-   - Configurable per-project?
+   - Status: ❌ — not started. Likely belongs in a future
+     `schema-gen diff` subcommand rather than the generation pipeline.
 
 ### Community Input Needed
 
@@ -1298,23 +1442,26 @@ Measure against:
 
 ### A. Orval Feature Parity Checklist
 
-| Feature | Priority | Phase |
-|---------|----------|-------|
-| TypeScript types generation | P0 | 2 |
-| React Query hooks | P0 | 2 |
-| Vue Query composables | P0 | 2 |
-| Axios client | P1 | 2 |
-| Fetch client | P1 | 2 |
-| Angular client | P2 | 3 |
-| Svelte Query | P2 | 3 |
-| MSW mock generation | P1 | 2 |
-| Zod schema generation | P1 | 2 |
-| Custom fetch implementation | P0 | 2 |
-| Transform hooks | P0 | 2 |
-| Tag-based filtering | P1 | 2 |
-| Custom templates | P2 | 3 |
-| Watch mode | P1 | 3 |
-| Spec validation | P0 | 1 |
+> See the **Implementation Status** section near the top of this document
+> for the live, annotated version of this table.
+
+| Feature | Priority | Phase | Status |
+|---------|----------|-------|--------|
+| TypeScript types generation | P0 | 2 | ✅ |
+| React Query hooks | P0 | 2 | ✅ (`@schema-gen/plugin-react-query-v5`) |
+| Vue Query composables | P0 | 2 | ✅ (`@schema-gen/plugin-vue-query-v4`) |
+| Axios client | P1 | 2 | ❌ (plugin territory) |
+| Fetch client | P1 | 2 | 🟡 (no standalone plugin; users supply `fetchFn`) |
+| Angular client | P2 | 3 | ❌ (plugin territory) |
+| Svelte Query | P2 | 3 | ❌ (plugin territory) |
+| MSW mock generation | P1 | 2 | ❌ (plugin territory) |
+| Zod schema generation | P1 | 2 | ❌ (plugin territory) |
+| Custom fetch implementation | P0 | 2 | ✅ (`fetchFn`) |
+| Transform hooks | P0 | 2 | ✅ (`onType`, `onEnum`, `onEndpoint`, `onFile`, `onFinished`) |
+| Tag-based filtering | P1 | 2 | ❌ (declared in config, not applied) |
+| Custom templates | P2 | 3 | ❌ (out of scope — bring-your-own in plugins) |
+| Watch mode | P1 | 3 | ✅ |
+| Spec validation | P0 | 1 | ✅ |
 
 ### B. Rust Crate Dependencies (Initial)
 

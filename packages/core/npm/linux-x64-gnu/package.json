@@ -1,0 +1,39 @@
+{
+  "name": "@schema-gen/core-linux-x64-gnu",
+  "version": "0.1.0",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "schema-gen.linux-x64-gnu.node",
+  "files": [
+    "schema-gen.linux-x64-gnu.node"
+  ],
+  "description": "High-performance OpenAPI to TypeScript/React Query/Vue Query code generation",
+  "keywords": [
+    "openapi",
+    "swagger",
+    "codegen",
+    "typescript",
+    "react-query",
+    "vue-query",
+    "tanstack-query"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkweb/schema-gen"
+  },
+  "libc": [
+    "glibc"
+  ]
+}

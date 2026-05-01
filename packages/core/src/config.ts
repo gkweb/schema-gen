@@ -33,6 +33,21 @@ export interface TypesOutputConfig {
 }
 
 /**
+ * Pre-parse spec transformer.
+ *
+ * Runs after the spec is read from disk/URL but before schema-gen builds
+ * the AST. Receives the raw OpenAPI document as a JS object (parsed from
+ * YAML or JSON) and returns the document — possibly mutated. Plugin
+ * `onSpec` hooks fire after this transformer.
+ *
+ * Can be supplied as:
+ * - A function taking and returning the raw spec.
+ * - A path (string) to a JS/TS module that default-exports such a function.
+ *   Relative paths resolve against the config file directory.
+ */
+export type SpecTransformer = (spec: unknown) => unknown | Promise<unknown>;
+
+/**
  * User-facing configuration options
  *
  * This is the type users interact with in their config files.
@@ -49,6 +64,11 @@ export interface UserConfig {
     validation?: 'strict' | 'warn' | 'off';
     /** Parser options for schema resolution */
     parserOptions?: ParserOptions;
+    /**
+     * Pre-parse transformer for the raw OpenAPI document.
+     * Equivalent to orval's `input.override.transformer`.
+     */
+    transformer?: SpecTransformer | string;
   };
 
   /** Output configuration */

@@ -15,6 +15,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 interface NativeBinding {
   parseSpecToAst: (content: string, format?: string) => string;
   parseSpecToObject: (content: string, format?: string) => unknown;
+  /**
+   * Parse YAML/JSON OpenAPI text into a generic JS object — without
+   * running the schema-gen AST transform. For pre-parse hooks.
+   */
+  parseRawSpecToObject: (content: string, format?: string) => unknown;
+  /**
+   * Run the AST transform on a pre-parsed OpenAPI document supplied as JSON.
+   */
+  transformSpecObject: (specJson: string) => unknown;
   validateSpec: (content: string, format?: string) => boolean;
   generateTypescriptTypes: (astJson: string, options?: string) => GeneratedFile[];
   generateTypescriptEnums: (astJson: string, options?: string) => GeneratedFile[];
@@ -143,6 +152,36 @@ function loadBinding(): NativeBinding {
 export function parseSpec(content: string, format?: 'json' | 'yaml'): unknown {
   const binding = loadBinding();
   return binding.parseSpecToObject(content, format);
+}
+
+/**
+ * Parse an OpenAPI specification into the raw OpenAPI document — without
+ * running the schema-gen AST transform.
+ *
+ * Use this when you need to mutate the spec before parsing — for example,
+ * inside a pre-parse transformer hook (`input.transformer`, plugin `onSpec`).
+ *
+ * Pair with {@link transformSpecObject} to finish the pipeline once the
+ * document has been mutated.
+ *
+ * @param content - The specification content (JSON or YAML string)
+ * @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
+ * @returns The raw OpenAPI document as a parsed object
+ */
+export function parseRawSpec(content: string, format?: 'json' | 'yaml'): unknown {
+  const binding = loadBinding();
+  return binding.parseRawSpecToObject(content, format);
+}
+
+/**
+ * Run the AST transform on an already-parsed OpenAPI document.
+ *
+ * @param spec - The raw OpenAPI document (JS object)
+ * @returns The AST as a parsed object
+ */
+export function transformSpec(spec: unknown): unknown {
+  const binding = loadBinding();
+  return binding.transformSpecObject(JSON.stringify(spec));
 }
 
 /**

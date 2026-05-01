@@ -19,6 +19,10 @@ schema-gen-core = { path = "../schema-gen-core" }
 # Serialization
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
+
+# OpenAPI parsing (for transform_spec_object)
+openapiv3.workspace = true
 
 [build-dependencies]
 napi-build = "2"

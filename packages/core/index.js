@@ -310,10 +310,12 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { parseSpecToAst, parseSpecToObject, validateSpec, generateTypescriptTypes, generateTypescriptEnums, generateConstants, getVersion, generate } = nativeBinding
+const { parseSpecToAst, parseSpecToObject, parseRawSpecToObject, transformSpecObject, validateSpec, generateTypescriptTypes, generateTypescriptEnums, generateConstants, getVersion, generate } = nativeBinding
 
 module.exports.parseSpecToAst = parseSpecToAst
 module.exports.parseSpecToObject = parseSpecToObject
+module.exports.parseRawSpecToObject = parseRawSpecToObject
+module.exports.transformSpecObject = transformSpecObject
 module.exports.validateSpec = validateSpec
 module.exports.generateTypescriptTypes = generateTypescriptTypes
 module.exports.generateTypescriptEnums = generateTypescriptEnums

@@ -87,6 +87,60 @@ pub fn parse_spec_to_object(content: String, format: Option<String>) -> Result<s
         .map_err(|e| Error::from_reason(format!("Failed to convert AST: {}", e)))
 }
 
+/// Parse an OpenAPI specification into the raw JS object representation
+/// of the underlying YAML/JSON document, *without* running schema-gen's
+/// AST transform.
+///
+/// Use this when you need to mutate the spec before parsing — for example,
+/// in a pre-parse transformer hook (`input.transformer`, plugin `onSpec`).
+///
+/// @param content - The specification content (JSON or YAML string)
+/// @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
+/// @returns The raw spec as a JavaScript object
+#[napi]
+pub fn parse_raw_spec_to_object(
+    content: String,
+    format: Option<String>,
+) -> Result<serde_json::Value> {
+    let spec_format = match format.as_deref() {
+        Some("json") => SpecFormat::Json,
+        Some("yaml") | Some("yml") => SpecFormat::Yaml,
+        _ => SpecFormat::detect(&content),
+    };
+
+    match spec_format {
+        SpecFormat::Json => serde_json::from_str(&content)
+            .map_err(|e| Error::from_reason(format!("Failed to parse JSON spec: {}", e))),
+        SpecFormat::Yaml => serde_yaml::from_str(&content)
+            .map_err(|e| Error::from_reason(format!("Failed to parse YAML spec: {}", e))),
+    }
+}
+
+/// Run schema-gen's AST transform on a pre-parsed OpenAPI document
+/// supplied as JSON. Pair with `parse_raw_spec_to_object` for a
+/// "parse → mutate in JS → transform" pipeline.
+///
+/// @param specJson - The OpenAPI document as a JSON string
+/// @returns The AST as a JavaScript object
+#[napi(ts_return_type = "SchemaAst")]
+pub fn transform_spec_object(spec_json: String) -> Result<serde_json::Value> {
+    let spec: openapiv3::OpenAPI = serde_json::from_str(&spec_json)
+        .map_err(|e| Error::from_reason(format!("Failed to deserialize spec object: {}", e)))?;
+
+    if !spec.openapi.starts_with("3.0") && !spec.openapi.starts_with("3.1") {
+        return Err(Error::from_reason(format!(
+            "Unsupported OpenAPI version: {}",
+            spec.openapi
+        )));
+    }
+
+    let ast = transform(spec)
+        .map_err(|e| Error::from_reason(format!("Failed to transform spec: {}", e)))?;
+
+    serde_json::to_value(&ast)
+        .map_err(|e| Error::from_reason(format!("Failed to convert AST: {}", e)))
+}
+
 /// Validate an OpenAPI specification
 ///
 /// @param content - The specification content (JSON or YAML string)

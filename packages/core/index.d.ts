@@ -29,6 +29,28 @@ export declare function parseSpecToAst(content: string, format?: string | undefi
  */
 export declare function parseSpecToObject(content: string, format?: string | undefined | null): SchemaAst
 /**
+ * Parse an OpenAPI specification into the raw JS object representation
+ * of the underlying YAML/JSON document, *without* running schema-gen's
+ * AST transform.
+ *
+ * Use this when you need to mutate the spec before parsing — for example,
+ * in a pre-parse transformer hook (`input.transformer`, plugin `onSpec`).
+ *
+ * @param content - The specification content (JSON or YAML string)
+ * @param format - The format: "json" or "yaml" (optional, auto-detected if not provided)
+ * @returns The raw spec as a JavaScript object
+ */
+export declare function parseRawSpecToObject(content: string, format?: string | undefined | null): any
+/**
+ * Run schema-gen's AST transform on a pre-parsed OpenAPI document
+ * supplied as JSON. Pair with `parse_raw_spec_to_object` for a
+ * "parse → mutate in JS → transform" pipeline.
+ *
+ * @param specJson - The OpenAPI document as a JSON string
+ * @returns The AST as a JavaScript object
+ */
+export declare function transformSpecObject(specJson: string): SchemaAst
+/**
  * Validate an OpenAPI specification
  *
  * @param content - The specification content (JSON or YAML string)

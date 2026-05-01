@@ -90,7 +90,7 @@ jobs:
       - name: Build (native)
         if: ${{ !matrix.docker }}
         shell: bash
-        run: pnpm --filter @schema-gen/core build:binding -- --target ${{ matrix.target }}
+        run: pnpm --filter @schema-gen/core build:binding --target ${{ matrix.target }}
 
       - name: Build (docker)
         if: ${{ matrix.docker }}
@@ -102,4 +102,4 @@ jobs:
             corepack enable
             pnpm install
             rustup target add ${{ matrix.target }} || true
-            cd packages/core && pnpm build:binding -- --target ${{ matrix.target }}
+            cd packages/core && pnpm build:binding --target ${{ matrix.target }}

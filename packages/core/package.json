@@ -47,13 +47,13 @@
     "jiti": "2.4.1"
   },
   "optionalDependencies": {
-    "@schema-gen/core-darwin-arm64": "0.1.0",
-    "@schema-gen/core-linux-x64-gnu": "0.1.0",
-    "@schema-gen/core-linux-x64-musl": "0.1.0",
-    "@schema-gen/core-linux-arm64-gnu": "0.1.0",
-    "@schema-gen/core-linux-arm64-musl": "0.1.0",
-    "@schema-gen/core-win32-x64-msvc": "0.1.0",
-    "@schema-gen/core-win32-arm64-msvc": "0.1.0"
+    "@schema-gen/core-darwin-arm64": "workspace:*",
+    "@schema-gen/core-linux-x64-gnu": "workspace:*",
+    "@schema-gen/core-linux-x64-musl": "workspace:*",
+    "@schema-gen/core-linux-arm64-gnu": "workspace:*",
+    "@schema-gen/core-linux-arm64-musl": "workspace:*",
+    "@schema-gen/core-win32-x64-msvc": "workspace:*",
+    "@schema-gen/core-win32-arm64-msvc": "workspace:*"
   },
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",

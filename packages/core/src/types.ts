@@ -6,6 +6,12 @@
  */
 
 /**
+ * Vendor extensions (`x-*` fields) preserved from the source spec.
+ * Always present; empty object when no extensions were defined.
+ */
+export type Extensions = Record<string, unknown>;
+
+/**
  * Root AST container for a parsed OpenAPI specification
  */
 export interface SchemaAst {
@@ -19,6 +25,8 @@ export interface SchemaAst {
   endpoints: EndpointNode[];
   /** Tag groupings */
   tags: TagNode[];
+  /** Vendor extensions from the spec root */
+  extensions?: Extensions;
 }
 
 /**
@@ -77,6 +85,8 @@ export interface TypeNode {
   deprecated: boolean;
   /** JSON pointer to the source in the original spec */
   sourcePath?: string;
+  /** Vendor extensions (`x-*` fields) from the source schema */
+  extensions?: Extensions;
 }
 
 /**
@@ -117,6 +127,8 @@ export interface PropertyNode {
   deprecated: boolean;
   /** Default value */
   default?: unknown;
+  /** Vendor extensions (`x-*` fields) from the property's schema */
+  extensions?: Extensions;
 }
 
 /**
@@ -165,6 +177,8 @@ export interface EnumNode {
   valueType: 'string' | 'integer';
   /** JSON pointer to the source in the original spec */
   sourcePath?: string;
+  /** Vendor extensions (`x-*` fields) from the source schema */
+  extensions?: Extensions;
 }
 
 /**
@@ -209,6 +223,8 @@ export interface EndpointNode {
   deprecated: boolean;
   /** Query type classification */
   queryType: 'query' | 'mutation';
+  /** Vendor extensions (`x-*` fields) from the operation */
+  extensions?: Extensions;
 }
 
 /**
@@ -236,6 +252,8 @@ export interface ParameterNode {
   style?: string;
   /** Whether to explode arrays/objects */
   explode: boolean;
+  /** Vendor extensions (`x-*` fields) from the parameter */
+  extensions?: Extensions;
 }
 
 /**
@@ -248,6 +266,8 @@ export interface RequestBodyNode {
   required: boolean;
   /** Content types and their schemas */
   content: MediaTypeContent[];
+  /** Vendor extensions (`x-*` fields) from the request body */
+  extensions?: Extensions;
 }
 
 /**
@@ -262,6 +282,8 @@ export interface ResponseNode {
   content: MediaTypeContent[];
   /** Response headers */
   headers: HeaderNode[];
+  /** Vendor extensions (`x-*` fields) from the response */
+  extensions?: Extensions;
 }
 
 /**

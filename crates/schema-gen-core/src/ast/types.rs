@@ -1,6 +1,12 @@
 //! Type definitions for the AST
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+
+/// Vendor extensions (`x-*` fields) preserved from the source spec.
+///
+/// Empty by default. Plugins can read these to react to vendor metadata.
+pub type Extensions = IndexMap<String, serde_json::Value>;
 
 /// A type definition node
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +39,10 @@ pub struct TypeNode {
     /// JSON pointer to the source in the original spec
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_path: Option<String>,
+
+    /// Vendor extensions (`x-*` fields) from the source schema.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// The kind of type (object, array, union, etc.)
@@ -118,6 +128,10 @@ pub struct PropertyNode {
     /// Default value (as JSON)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default: Option<serde_json::Value>,
+
+    /// Vendor extensions (`x-*` fields) from the property's schema.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// A reference to a type (can be named, inline, or primitive)

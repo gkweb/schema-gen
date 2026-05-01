@@ -44,6 +44,7 @@ export type {
   MediaTypeContent,
   HeaderNode,
   SecurityRequirement,
+  Extensions,
 } from '@schema-gen/core';
 
 export type { GeneratedFile } from '@schema-gen/core';
@@ -63,6 +64,21 @@ export interface Plugin {
 
   /** Dependencies on other plugins (for ordering) */
   dependencies?: string[];
+
+  // Phase 0: Pre-parse spec mutation
+  /**
+   * Called once with the raw OpenAPI document, before the AST is built.
+   *
+   * Fires after `input.transformer` (if configured) and before any AST
+   * is constructed. Plugins iterate in config-array order, each receiving
+   * the document the previous plugin returned (or left unchanged).
+   *
+   * Return the mutated document, or `void` to leave it untouched.
+   */
+  onSpec?(
+    rawSpec: unknown,
+    context: SpecPluginContext,
+  ): unknown | void | Promise<unknown | void>;
 
   // Phase 1: Initialization
   /** Called once before processing begins */
@@ -139,6 +155,12 @@ export interface PluginBinding {
 }
 
 /**
+ * Output structure mode shared with plugins so they can emit one-file-per-X
+ * layouts. Mirrors `output.structure` in `UserConfig`.
+ */
+export type OutputStructure = 'flat' | 'by-tag' | 'by-endpoint';
+
+/**
  * Plugin context provided to all plugin hooks
  */
 export interface PluginContext {
@@ -156,6 +178,12 @@ export interface PluginContext {
 
   /** Config file directory (for resolving relative paths) */
   configDir: string;
+
+  /**
+   * Output structure mode (`flat` | `by-tag` | `by-endpoint`).
+   * Plugins that emit operation files should respect this.
+   */
+  outputStructure: OutputStructure;
 
   /** Logger */
   log: Logger;
@@ -176,6 +204,32 @@ export interface PluginContext {
 export interface FinishedContext extends PluginContext {
   /** Files that were written to disk */
   files: WrittenFile[];
+}
+
+/**
+ * Context provided to the `onSpec` pre-parse hook.
+ *
+ * The AST does not exist yet at this point, so {@link PluginContext}'s
+ * `ast`, `utils`, and `binding` fields are not available.
+ */
+export interface SpecPluginContext {
+  /** Plugin configuration from user config */
+  config: Record<string, unknown>;
+
+  /** Output directory */
+  outputDir: string;
+
+  /** Types output directory (if output.types.dir is configured) */
+  typesDir?: string;
+
+  /** Config file directory (for resolving relative paths) */
+  configDir: string;
+
+  /** Logger */
+  log: Logger;
+
+  /** Access to other plugins' shared state */
+  shared: Map<string, unknown>;
 }
 
 /**
@@ -255,6 +309,7 @@ export function createPluginContext(
     outputDir: options?.outputDir ?? './output',
     typesDir: options?.typesDir,
     configDir: options?.configDir ?? process.cwd(),
+    outputStructure: options?.outputStructure ?? 'flat',
     log: options?.log ?? createConsoleLogger(),
     shared: options?.shared ?? new Map(),
     utils: createPluginUtils(ast),

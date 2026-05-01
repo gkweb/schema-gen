@@ -4,8 +4,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { SchemaGenConfig } from './config';
-import { parseSpec, native, type GeneratedFile } from './binding';
+import { createJiti } from 'jiti';
+import type { SchemaGenConfig, SpecTransformer } from './config';
+import { parseSpec, parseRawSpec, transformSpec, native, type GeneratedFile } from './binding';
 import type { SchemaAst } from './types';
 import { loadPlugins } from './plugins/loader';
 import { PluginExecutor } from './plugins/executor';
@@ -63,6 +64,42 @@ function createPluginBinding(): PluginBinding {
       return native.generateConstants(astJson, optionsJson);
     },
   };
+}
+
+/**
+ * Resolve a {@link SpecTransformer} value into a callable function.
+ *
+ * String values are treated as module paths and loaded via `jiti` so that
+ * TypeScript files work without a separate compile step. The default export
+ * is used; if the module exports the function under a different name, the
+ * user should write a small wrapper.
+ */
+async function resolveTransformer(
+  value: SpecTransformer | string,
+  baseDir: string,
+): Promise<SpecTransformer> {
+  if (typeof value === 'function') {
+    return value;
+  }
+
+  const modulePath = path.resolve(baseDir, value);
+  const jiti = createJiti(modulePath, {
+    interopDefault: true,
+    extensions: ['.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'],
+  });
+  const loaded = (await jiti.import(modulePath)) as
+    | SpecTransformer
+    | { default?: SpecTransformer };
+
+  const fn =
+    typeof loaded === 'function' ? loaded : typeof loaded?.default === 'function' ? loaded.default : null;
+
+  if (!fn) {
+    throw new Error(
+      `input.transformer at "${value}" must default-export a function (spec) => spec`,
+    );
+  }
+  return fn;
 }
 
 /**
@@ -139,9 +176,6 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
   // Detect format
   const format = options.format ?? (config.input.path.endsWith('.json') ? 'json' : 'yaml');
 
-  // Parse the spec
-  const ast = parseSpec(specContent, format) as SchemaAst;
-
   // Load plugins
   const plugins = await loadPlugins(config.plugins, baseDir);
 
@@ -162,8 +196,28 @@ export async function createGenerator(options: CreateGeneratorOptions): Promise<
     outputDir,
     typesDir,
     configDir: baseDir,
+    outputStructure: config.output.structure ?? 'flat',
     binding,
   });
+
+  // Phase 0: pre-parse spec mutation (input.transformer + plugin onSpec hooks)
+  const hasUserTransformer = config.input.transformer !== undefined;
+  const hasPluginOnSpec = plugins.some(({ plugin }) => plugin.onSpec !== undefined);
+
+  let ast: SchemaAst;
+  if (hasUserTransformer || hasPluginOnSpec) {
+    let rawSpec = parseRawSpec(specContent, format);
+
+    if (hasUserTransformer) {
+      const transformer = await resolveTransformer(config.input.transformer!, baseDir);
+      rawSpec = await transformer(rawSpec);
+    }
+
+    rawSpec = await executor.runOnSpec(rawSpec);
+    ast = transformSpec(rawSpec) as SchemaAst;
+  } else {
+    ast = parseSpec(specContent, format) as SchemaAst;
+  }
 
   const run = async (): Promise<GeneratedFile[]> => {
     const result = await executor.execute(ast);

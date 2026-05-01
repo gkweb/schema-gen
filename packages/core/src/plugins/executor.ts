@@ -16,7 +16,9 @@ import type {
   PluginBinding,
   Logger,
   PluginUtils,
+  OutputStructure,
   FinishedContext,
+  SpecPluginContext,
   WrittenFile,
 } from '@schema-gen/plugin-sdk';
 import type { SchemaAst, TypeNode, EnumNode, EndpointNode } from '../types';
@@ -39,6 +41,9 @@ export interface PluginExecutorOptions {
 
   /** Config file directory */
   configDir: string;
+
+  /** Output structure mode (defaults to 'flat') */
+  outputStructure?: OutputStructure;
 
   /** Rust binding for built-in generators */
   binding: PluginBinding;
@@ -68,6 +73,7 @@ export class PluginExecutor {
   private outputDir: string;
   private typesDir?: string;
   private configDir: string;
+  private outputStructure: OutputStructure;
   private binding: PluginBinding;
   private logger: Logger;
   private shared: Map<string, unknown>;
@@ -77,6 +83,7 @@ export class PluginExecutor {
     this.outputDir = options.outputDir;
     this.typesDir = options.typesDir;
     this.configDir = options.configDir;
+    this.outputStructure = options.outputStructure ?? 'flat';
     this.binding = options.binding;
     this.logger = options.logger ?? createLogger();
     this.shared = new Map();
@@ -323,11 +330,50 @@ export class PluginExecutor {
       outputDir: this.outputDir,
       typesDir: this.typesDir,
       configDir: this.configDir,
+      outputStructure: this.outputStructure,
       log: this.logger,
       shared: this.shared,
       utils: createPluginUtils(ast),
       binding: this.binding,
     };
+  }
+
+  /**
+   * Phase 0: Run onSpec hooks against the raw, pre-AST OpenAPI document.
+   *
+   * Plugins iterate in config-array order. Each plugin receives the document
+   * the previous plugin returned (or left unchanged) and may return a mutated
+   * document or `void` to leave it untouched.
+   */
+  async runOnSpec(rawSpec: unknown): Promise<unknown> {
+    let current = rawSpec;
+
+    for (const { plugin, config } of this.plugins) {
+      if (plugin.onSpec) {
+        const ctx: SpecPluginContext = {
+          config,
+          outputDir: this.outputDir,
+          typesDir: this.typesDir,
+          configDir: this.configDir,
+          log: this.logger,
+          shared: this.shared,
+        };
+        this.logger.debug(`[${plugin.id}] Running onSpec`);
+
+        try {
+          const result = await plugin.onSpec(current, ctx);
+          if (result !== undefined) {
+            current = result;
+          }
+        } catch (error) {
+          throw new Error(
+            `Plugin "${plugin.id}" onSpec failed: ${error instanceof Error ? error.message : error}`,
+          );
+        }
+      }
+    }
+
+    return current;
   }
 
   /**

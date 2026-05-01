@@ -36,6 +36,10 @@ pub struct SchemaAst {
 
     /// Tag groupings
     pub tags: Vec<TagNode>,
+
+    /// Vendor extensions (`x-*` fields) from the spec root.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 impl SchemaAst {
@@ -47,6 +51,7 @@ impl SchemaAst {
             enums: IndexMap::new(),
             endpoints: Vec::new(),
             tags: Vec::new(),
+            extensions: Extensions::new(),
         }
     }
 

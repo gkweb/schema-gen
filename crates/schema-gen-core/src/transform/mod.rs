@@ -47,6 +47,9 @@ impl<'a> Transformer<'a> {
 
     /// Run the transformation
     fn transform(mut self) -> Result<SchemaAst> {
+        // Copy spec-root vendor extensions
+        self.ast.extensions = self.spec.extensions.clone();
+
         // Extract tags
         self.extract_tags();
 

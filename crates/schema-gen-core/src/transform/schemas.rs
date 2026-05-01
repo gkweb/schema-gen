@@ -72,6 +72,7 @@ fn transform_schema(name: &str, schema: &Schema, ast: &mut SchemaAst, ctx: &mut 
         nullable: schema_data.nullable,
         deprecated: schema_data.deprecated,
         source_path: Some(format!("#/components/schemas/{}", name)),
+        extensions: schema_data.extensions.clone(),
     };
 
     ast.types.insert(type_node.id.clone(), type_node);
@@ -108,6 +109,7 @@ fn try_extract_enum(name: &str, schema: &Schema, source_path: Option<String>) ->
         variants,
         value_type: EnumValueType::String,
         source_path: source_path.or_else(|| Some(format!("#/components/schemas/{}", name))),
+        extensions: schema.schema_data.extensions.clone(),
     })
 }
 
@@ -116,6 +118,7 @@ fn try_extract_inline_enum(
     parent_name: &str,
     property_name: &str,
     string_type: &openapiv3::StringType,
+    schema_data: &openapiv3::SchemaData,
 ) -> Option<EnumNode> {
     if string_type.enumeration.is_empty() {
         return None;
@@ -146,6 +149,7 @@ fn try_extract_inline_enum(
             "#/components/schemas/{}/properties/{}",
             parent_name, property_name
         )),
+        extensions: schema_data.extensions.clone(),
     })
 }
 
@@ -188,16 +192,43 @@ fn transform_type(parent_name: &str, type_: &Type, ctx: &mut TransformContext) -
                     );
                     let required = obj.required.contains(name);
 
+                    // Extract per-property metadata when the property is an inline
+                    // schema. References are skipped — the metadata lives on the
+                    // referenced component.
+                    let (description, nullable, readonly, deprecated, default, extensions) =
+                        match schema_ref {
+                            ReferenceOr::Item(schema) => {
+                                let data = &schema.schema_data;
+                                (
+                                    data.description.clone(),
+                                    data.nullable,
+                                    data.read_only,
+                                    data.deprecated,
+                                    data.default.clone(),
+                                    data.extensions.clone(),
+                                )
+                            }
+                            ReferenceOr::Reference { .. } => (
+                                None,
+                                false,
+                                false,
+                                false,
+                                None,
+                                Default::default(),
+                            ),
+                        };
+
                     PropertyNode {
                         name: to_camel_case(name),
                         original_name: name.clone(),
-                        description: None, // Would need to resolve schema for this
+                        description,
                         type_ref,
                         required,
-                        nullable: false,
-                        readonly: false,
-                        deprecated: false,
-                        default: None,
+                        nullable,
+                        readonly,
+                        deprecated,
+                        default,
+                        extensions,
                     }
                 })
                 .collect();
@@ -303,7 +334,12 @@ fn transform_boxed_reference_or_schema_with_enum_extraction(
         ReferenceOr::Item(schema) => {
             // Check if this is an inline string enum
             if let SchemaKind::Type(Type::String(string_type)) = &schema.schema_kind {
-                if let Some(enum_node) = try_extract_inline_enum(parent_name, property_name, string_type) {
+                if let Some(enum_node) = try_extract_inline_enum(
+                    parent_name,
+                    property_name,
+                    string_type,
+                    &schema.schema_data,
+                ) {
                     let enum_id = enum_node.id.clone();
                     let enum_name = enum_node.name.clone();
                     ctx.extracted_enums.insert(enum_id.clone(), enum_node);

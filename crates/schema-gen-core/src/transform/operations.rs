@@ -110,6 +110,7 @@ fn transform_operation(
                     type_ref: content.schema.as_ref().map(|s| transform_schema_ref(s)),
                 })
                 .collect(),
+            extensions: body.extensions.clone(),
         }),
         ReferenceOr::Reference { .. } => None, // TODO: resolve reference
     });
@@ -135,12 +136,14 @@ fn transform_operation(
                         })
                         .collect(),
                     headers: vec![], // TODO: transform headers
+                    extensions: response.extensions.clone(),
                 },
                 ReferenceOr::Reference { .. } => ResponseNode {
                     status_code,
                     description: None,
                     content: vec![],
                     headers: vec![],
+                    extensions: Default::default(),
                 },
             }
         })
@@ -176,6 +179,7 @@ fn transform_operation(
         security,
         deprecated: op.deprecated,
         query_type: method.into(),
+        extensions: op.extensions.clone(),
     })
 }
 
@@ -212,6 +216,7 @@ fn transform_parameter(param_ref: &ReferenceOr<Parameter>) -> Option<ParameterNo
         deprecated: data.deprecated.unwrap_or(false),
         style: None, // TODO: transform style
         explode: data.explode.unwrap_or(false),
+        extensions: data.extensions.clone(),
     })
 }
 

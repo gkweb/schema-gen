@@ -496,6 +496,7 @@ mod tests {
             ],
             value_type: EnumValueType::String,
             source_path: None,
+            extensions: Default::default(),
         };
 
         let output = gen.generate_enum(&enum_node);
@@ -529,6 +530,7 @@ mod tests {
             ],
             value_type: EnumValueType::String,
             source_path: None,
+            extensions: Default::default(),
         };
 
         let output = gen.generate_enum(&enum_node);

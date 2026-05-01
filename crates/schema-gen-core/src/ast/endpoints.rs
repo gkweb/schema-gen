@@ -1,6 +1,8 @@
 //! Endpoint definitions for the AST
 
+use super::types::Extensions;
 use super::TypeRef;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /// An endpoint (operation) definition node
@@ -54,6 +56,10 @@ pub struct EndpointNode {
 
     /// Query type classification (query vs mutation)
     pub query_type: QueryType,
+
+    /// Vendor extensions (`x-*` fields) from the operation.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// HTTP method
@@ -153,6 +159,10 @@ pub struct ParameterNode {
     /// Whether to explode arrays/objects
     #[serde(default)]
     pub explode: bool,
+
+    /// Vendor extensions (`x-*` fields) from the parameter.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// Where a parameter is located
@@ -196,6 +206,10 @@ pub struct RequestBodyNode {
 
     /// Content types and their schemas
     pub content: Vec<MediaTypeContent>,
+
+    /// Vendor extensions (`x-*` fields) from the request body.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// Response definition
@@ -216,6 +230,10 @@ pub struct ResponseNode {
     /// Response headers
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub headers: Vec<HeaderNode>,
+
+    /// Vendor extensions (`x-*` fields) from the response.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// HTTP status code representation
@@ -328,6 +346,7 @@ impl EndpointNode {
             security: Vec::new(),
             deprecated: false,
             query_type: method.into(),
+            extensions: Extensions::new(),
         }
     }
 

@@ -1,5 +1,7 @@
 //! Enum definitions for the AST
 
+use super::types::Extensions;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /// An enum definition node
@@ -28,6 +30,10 @@ pub struct EnumNode {
     /// JSON pointer to the source in the original spec
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_path: Option<String>,
+
+    /// Vendor extensions (`x-*` fields) from the source schema.
+    #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    pub extensions: Extensions,
 }
 
 /// A single enum variant
@@ -76,6 +82,7 @@ impl EnumNode {
             variants: Vec::new(),
             value_type: EnumValueType::String,
             source_path: None,
+            extensions: Extensions::new(),
         }
     }
 
@@ -89,6 +96,7 @@ impl EnumNode {
             variants: Vec::new(),
             value_type: EnumValueType::Integer,
             source_path: None,
+            extensions: Extensions::new(),
         }
     }
 

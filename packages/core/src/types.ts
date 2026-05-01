@@ -332,14 +332,3 @@ export interface SecurityRequirement {
   scopes: string[];
 }
 
-/**
- * A generated file from a plugin
- */
-export interface GeneratedFile {
-  /** Output file path (relative to output directory) */
-  path: string;
-  /** File content */
-  content: string;
-  /** Skip formatting (e.g., for non-code files) */
-  skipFormat?: boolean;
-}

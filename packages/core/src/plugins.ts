@@ -130,14 +130,14 @@ export interface RequestPathsConfig {
 /**
  * Create a typed plugin configuration
  */
-function createPluginConfig<T extends Record<string, unknown>>(
+function createPluginConfig<T extends object>(
   name: string,
   config?: T,
 ): PluginConfig {
   if (!config || Object.keys(config).length === 0) {
     return name;
   }
-  return { name, config };
+  return { name, config: config as Record<string, unknown> };
 }
 
 /**

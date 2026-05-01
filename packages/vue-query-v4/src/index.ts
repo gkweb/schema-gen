@@ -400,6 +400,7 @@ function renderGroup(
   return {
     path: fileName,
     content: content.trimEnd() + '\n',
+    skipFormat: false,
   };
 }
 

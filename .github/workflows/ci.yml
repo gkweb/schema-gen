@@ -32,11 +32,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Build packages
+        run: pnpm build:packages
+
       - name: Type check
         run: pnpm typecheck
-
-      - name: Build packages
-        run: pnpm build
 
       - name: Run tests
         run: pnpm test
@@ -99,7 +99,7 @@ jobs:
           image: ${{ matrix.docker }}
           options: --user 0:0 -v ${{ github.workspace }}:/build -w /build
           run: |
-            corepack enable
-            pnpm install
+            npm install -g pnpm@9.14.2
+            pnpm install --frozen-lockfile
             rustup target add ${{ matrix.target }} || true
             cd packages/core && pnpm build:binding --target ${{ matrix.target }}

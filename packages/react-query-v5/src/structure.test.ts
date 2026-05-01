@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reactQueryV5 } from './index';
-import type { EndpointNode, SchemaAst } from '@schema-gen/plugin-sdk';
+import type { EndpointNode, SchemaAst, GeneratedFile } from '@schema-gen/plugin-sdk';
 import { createPluginContext } from '@schema-gen/plugin-sdk';
 
 function endpoint(
@@ -57,7 +57,7 @@ describe('output.structure', () => {
   it('flat (default) emits a single hooks.ts', async () => {
     const plugin = reactQueryV5();
     const ctx = createPluginContext(ast(endpoints));
-    const files = await plugin.emit!(ctx);
+    const files = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(files.map((f) => f.path)).toEqual(['hooks.ts']);
     expect(files[0].content).toContain('useListPets');
@@ -69,7 +69,7 @@ describe('output.structure', () => {
   it('by-tag emits one file per tag and groups untagged into default.ts', async () => {
     const plugin = reactQueryV5();
     const ctx = createPluginContext(ast(endpoints), { outputStructure: 'by-tag' });
-    const files = await plugin.emit!(ctx);
+    const files = await plugin.emit!(ctx) as GeneratedFile[];
 
     const paths = files.map((f) => f.path).sort();
     expect(paths).toEqual(['default.ts', 'orders.ts', 'pets.ts']);
@@ -90,7 +90,7 @@ describe('output.structure', () => {
   it('by-endpoint emits one file per generated operation', async () => {
     const plugin = reactQueryV5();
     const ctx = createPluginContext(ast(endpoints), { outputStructure: 'by-endpoint' });
-    const files = await plugin.emit!(ctx);
+    const files = await plugin.emit!(ctx) as GeneratedFile[];
 
     const paths = files.map((f) => f.path).sort();
     expect(paths).toEqual([
@@ -107,7 +107,7 @@ describe('output.structure', () => {
   it('skipped endpoints do not produce empty files in by-endpoint mode', async () => {
     const plugin = reactQueryV5({ overrides: { listOrders: { skip: true } } });
     const ctx = createPluginContext(ast(endpoints), { outputStructure: 'by-endpoint' });
-    const files = await plugin.emit!(ctx);
+    const files = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(files.map((f) => f.path)).not.toContain('list-orders.ts');
   });
@@ -117,7 +117,7 @@ describe('output.structure', () => {
       overrides: { listOrders: { skip: true } },
     });
     const ctx = createPluginContext(ast(endpoints), { outputStructure: 'by-tag' });
-    const files = await plugin.emit!(ctx);
+    const files = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(files.map((f) => f.path)).not.toContain('orders.ts');
   });

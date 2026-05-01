@@ -11,7 +11,13 @@
 
 import { describe, it, expect } from 'vitest';
 import { reactQueryV5 } from './index';
-import type { SchemaAst, EndpointNode, ParameterNode, TypeRef } from '@schema-gen/plugin-sdk';
+import type {
+  SchemaAst,
+  EndpointNode,
+  ParameterNode,
+  TypeRef,
+  GeneratedFile,
+} from '@schema-gen/plugin-sdk';
 import { createPluginContext } from '@schema-gen/plugin-sdk';
 
 // ============================================================================
@@ -153,7 +159,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files).toHaveLength(1);
       expect(files[0].path).toBe('hooks.ts');
@@ -169,7 +175,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("export const getListPetsQueryKey = () => ['listPets'] as const;");
@@ -189,7 +195,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface GetPetParams');
@@ -208,7 +214,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface ListPetsParams');
@@ -239,7 +245,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('Pet[]');
@@ -251,7 +257,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('queryOptions({');
@@ -272,7 +278,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useMutation');
@@ -301,7 +307,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface UpdatePetVariables');
@@ -332,7 +338,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useDeletePet');
@@ -347,7 +353,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('UseMutationResult<');
@@ -365,7 +371,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('fetch(');
@@ -383,11 +389,11 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { apiClient } from './api-client';");
-      expect(content).toContain('apiClient(');
+      expect(content).toMatch(/\bapiClient<[^>]+>\(/);
       expect(content).not.toMatch(/\bfetch\(/);
     });
 
@@ -402,11 +408,11 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { customFetch } from '@/lib/fetch';");
-      expect(content).toContain('customFetch(');
+      expect(content).toMatch(/\bcustomFetch<[^>]+>\(/);
     });
 
     it('should pass body to fetchFn for mutations', () => {
@@ -420,7 +426,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('body: vars.data');
@@ -443,10 +449,10 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
-      expect(content).toContain('client(`/pets/${vars.petId}`');
+      expect(content).toMatch(/\bclient<[^>]+>\(`\/pets\/\$\{vars\.petId\}`/);
     });
   });
 
@@ -465,7 +471,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('useListPets');
@@ -482,7 +488,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CustomPetResponse');
@@ -498,7 +504,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('ApiError');
@@ -514,7 +520,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('data: CustomCreatePetRequest;');
@@ -530,7 +536,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useQuery');
@@ -550,7 +556,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useMutation');
@@ -571,7 +577,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CustomListPetsParams');
@@ -590,7 +596,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ fileName: 'api-hooks.ts' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files[0].path).toBe('api-hooks.ts');
     });
@@ -602,7 +608,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ useQuery: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('useListPets');
@@ -616,7 +622,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ useMutation: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useListPets');
@@ -629,7 +635,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ exportQueryKeys: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // When disabled, the query key function should not be exported
@@ -643,7 +649,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ exportQueryOptions: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // When disabled, the query options function should not be exported
@@ -656,7 +662,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ typesImportPath: '@/api/types' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("from '@/api/types'");
@@ -668,7 +674,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ baseUrl: 'https://api.example.com' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('https://api.example.com/pets');
@@ -680,7 +686,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5({ includeJsDoc: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('/**');
@@ -693,7 +699,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('/**');
@@ -713,7 +719,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Check that query-related types and functions are imported
@@ -730,7 +736,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Check that mutation-related types and functions are imported
@@ -746,7 +752,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain("from 'vue'");
@@ -761,7 +767,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import type { Pet } from './types';");
@@ -773,7 +779,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CreatePetRequest, Pet');
@@ -793,7 +799,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useGetPets');
@@ -813,7 +819,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('unknown');
@@ -838,7 +844,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('TData = string');
@@ -859,7 +865,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useListPets');
@@ -886,7 +892,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('PetStatus');
@@ -897,7 +903,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain('// Generated by schema-gen');
@@ -960,7 +966,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { toFormData } from './lib/form-data';");
@@ -982,7 +988,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use JSON.stringify, not toFormData
@@ -1008,7 +1014,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use JSON.stringify since override disabled formDataFn
@@ -1037,7 +1043,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use the per-operation override
@@ -1062,12 +1068,12 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { apiClient } from './api-client';");
       expect(content).toContain("import { toFormData } from './lib/form-data';");
-      expect(content).toContain('apiClient(');
+      expect(content).toMatch(/\bapiClient<[^>]+>\(/);
       expect(content).toContain('toFormData(vars.data');
     });
 
@@ -1087,7 +1093,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('toFormData(vars.data');
@@ -1106,7 +1112,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('data: FileUploadRequest;');
@@ -1135,7 +1141,7 @@ describe('reactQueryV5 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Count the number of toFormData imports - should only be 1
@@ -1185,7 +1191,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('UseQueryResult<');
@@ -1200,7 +1206,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('params: ListPetsParams');
@@ -1213,7 +1219,7 @@ describe('reactQueryV5 Plugin', () => {
       const plugin = reactQueryV5();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('queryOptions({');

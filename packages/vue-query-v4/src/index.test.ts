@@ -11,7 +11,13 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { vueQueryV4 } from './index';
-import type { SchemaAst, EndpointNode, ParameterNode, TypeRef } from '@schema-gen/plugin-sdk';
+import type {
+  SchemaAst,
+  EndpointNode,
+  ParameterNode,
+  TypeRef,
+  GeneratedFile,
+} from '@schema-gen/plugin-sdk';
 import { createPluginContext } from '@schema-gen/plugin-sdk';
 
 // ============================================================================
@@ -153,7 +159,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files).toHaveLength(1);
       expect(files[0].path).toBe('queries.ts');
@@ -169,7 +175,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("export const getListPetsQueryKey = () => ['listPets'] as const;");
@@ -189,7 +195,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface GetPetParams');
@@ -208,7 +214,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface ListPetsParams');
@@ -239,7 +245,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('Pet[]');
@@ -257,7 +263,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useMutation');
@@ -286,7 +292,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('export interface UpdatePetVariables');
@@ -317,7 +323,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useDeletePet');
@@ -338,7 +344,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('fetch(');
@@ -356,11 +362,11 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { apiClient } from './api-client';");
-      expect(content).toContain('apiClient(');
+      expect(content).toMatch(/\bapiClient<[^>]+>\(/);
       expect(content).not.toMatch(/\bfetch\(/);
     });
 
@@ -375,11 +381,11 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { customFetch } from '@/lib/fetch';");
-      expect(content).toContain('customFetch(');
+      expect(content).toMatch(/\bcustomFetch<[^>]+>\(/);
     });
 
     it('should pass body to fetchFn for mutations', () => {
@@ -393,7 +399,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('body: vars.data');
@@ -416,10 +422,10 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
-      expect(content).toContain('client(`/pets/${vars.petId}`');
+      expect(content).toMatch(/\bclient<[^>]+>\(`\/pets\/\$\{vars\.petId\}`/);
     });
   });
 
@@ -438,7 +444,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('useListPets');
@@ -455,7 +461,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CustomPetResponse');
@@ -471,7 +477,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('TError = ApiError');
@@ -487,7 +493,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('data: CustomCreatePetRequest;');
@@ -503,7 +509,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useQuery');
@@ -523,7 +529,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useMutation');
@@ -544,7 +550,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CustomListPetsParams');
@@ -563,7 +569,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ fileName: 'api-hooks.ts' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files[0].path).toBe('api-hooks.ts');
     });
@@ -575,7 +581,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ useQuery: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('useListPets');
@@ -589,7 +595,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ useMutation: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useListPets');
@@ -602,7 +608,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ exportQueryKeys: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // When disabled, the query key function should not be exported
@@ -616,7 +622,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ exportQueryOptions: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // When disabled, the query options function should not be exported
@@ -629,7 +635,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ typesImportPath: '@/api/types' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("from '@/api/types'");
@@ -641,7 +647,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ baseUrl: 'https://api.example.com' });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('https://api.example.com/pets');
@@ -653,7 +659,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4({ includeJsDoc: false });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).not.toContain('/**');
@@ -666,7 +672,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('/**');
@@ -686,7 +692,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Check that query-related types and functions are imported
@@ -702,7 +708,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Check that mutation-related types and functions are imported
@@ -718,7 +724,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import type { MaybeRef } from 'vue';");
@@ -731,7 +737,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import type { Pet } from './types';");
@@ -743,7 +749,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('CreatePetRequest, Pet');
@@ -763,7 +769,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useGetPets');
@@ -783,7 +789,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('unknown');
@@ -808,7 +814,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('TData = string');
@@ -829,7 +835,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('useListPets');
@@ -856,7 +862,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('PetStatus');
@@ -867,7 +873,7 @@ describe('vueQueryV4 Plugin', () => {
       const plugin = vueQueryV4();
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
 
       expect(files).toHaveLength(1);
       expect(files[0].content).toContain('// Generated by schema-gen');
@@ -930,7 +936,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { toFormData } from './lib/form-data';");
@@ -952,7 +958,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use JSON.stringify, not toFormData
@@ -978,7 +984,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use JSON.stringify since override disabled formDataFn
@@ -1007,7 +1013,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Should use the per-operation override
@@ -1032,12 +1038,12 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain("import { apiClient } from './api-client';");
       expect(content).toContain("import { toFormData } from './lib/form-data';");
-      expect(content).toContain('apiClient(');
+      expect(content).toMatch(/\bapiClient<[^>]+>\(/);
       expect(content).toContain('toFormData(vars.data');
     });
 
@@ -1057,7 +1063,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('toFormData(vars.data');
@@ -1076,7 +1082,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       expect(content).toContain('data: FileUploadRequest;');
@@ -1105,7 +1111,7 @@ describe('vueQueryV4 Plugin', () => {
       });
       const ctx = createPluginContext(ast);
 
-      const files = plugin.emit!(ctx);
+      const files = plugin.emit!(ctx) as GeneratedFile[];
       const content = files[0].content;
 
       // Count the number of toFormData imports - should only be 1

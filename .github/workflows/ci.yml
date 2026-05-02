@@ -105,8 +105,11 @@ jobs:
           image: ${{ matrix.docker }}
           options: --user 0:0 -v ${{ github.workspace }}:/build -w /build
           run: |
+            set -e
             rustup update stable && rustup default stable
             rustup target add ${{ matrix.target }} || true
-            npm install -g pnpm@9.14.2
+            wget -qO /usr/local/bin/pnpm "https://github.com/pnpm/pnpm/releases/download/v9.14.2/pnpm-linuxstatic-$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
+            chmod +x /usr/local/bin/pnpm
+            pnpm --version
             pnpm install --frozen-lockfile
             cd packages/core && pnpm build:binding --target ${{ matrix.target }}

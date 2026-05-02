@@ -76,6 +76,10 @@ jobs:
             set -e
             rustup update stable && rustup default stable
             rustup target add ${{ matrix.target }} || true
+            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-musl" ]; then
+              export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+            fi
             wget -qO /usr/local/bin/pnpm "https://github.com/pnpm/pnpm/releases/download/v9.14.2/pnpm-linuxstatic-$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
             chmod +x /usr/local/bin/pnpm
             pnpm --version

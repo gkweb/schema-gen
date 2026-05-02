@@ -4,11 +4,11 @@
   "type": "module",
   "description": "High-performance OpenAPI to TypeScript/React Query/Vue Query code generation",
   "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.mts"
     },
     "./package.json": "./package.json"
   },

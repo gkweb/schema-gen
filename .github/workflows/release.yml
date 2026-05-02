@@ -73,9 +73,10 @@ jobs:
           image: ${{ matrix.docker }}
           options: --user 0:0 -v ${{ github.workspace }}:/build -w /build
           run: |
+            rustup update stable && rustup default stable
+            rustup target add ${{ matrix.target }} || true
             npm install -g pnpm@9.14.2
             pnpm install --frozen-lockfile
-            rustup target add ${{ matrix.target }} || true
             cd packages/core && pnpm build:binding --target ${{ matrix.target }}
 
       - name: Upload artifact

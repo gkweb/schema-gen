@@ -26,6 +26,9 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install dependencies
         run: pnpm install
 
@@ -34,6 +37,9 @@ jobs:
 
       - name: Build packages
         run: pnpm build:packages
+
+      - name: Build native binding (host)
+        run: pnpm --filter @schema-gen/core build:binding
 
       - name: Type check
         run: pnpm typecheck

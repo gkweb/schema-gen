@@ -69,10 +69,35 @@ importers:
       jiti:
         specifier: 2.4.1
         version: 2.4.1
+    optionalDependencies:
+      '@schema-gen/core-darwin-arm64':
+        specifier: workspace:*
+        version: link:npm/darwin-arm64
+      '@schema-gen/core-linux-arm64-gnu':
+        specifier: workspace:*
+        version: link:npm/linux-arm64-gnu
+      '@schema-gen/core-linux-arm64-musl':
+        specifier: workspace:*
+        version: link:npm/linux-arm64-musl
+      '@schema-gen/core-linux-x64-gnu':
+        specifier: workspace:*
+        version: link:npm/linux-x64-gnu
+      '@schema-gen/core-linux-x64-musl':
+        specifier: workspace:*
+        version: link:npm/linux-x64-musl
+      '@schema-gen/core-win32-arm64-msvc':
+        specifier: workspace:*
+        version: link:npm/win32-arm64-msvc
+      '@schema-gen/core-win32-x64-msvc':
+        specifier: workspace:*
+        version: link:npm/win32-x64-msvc
     devDependencies:
       '@napi-rs/cli':
         specifier: 2.18.4
         version: 2.18.4
+      '@schema-gen/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@types/node':
         specifier: 22.10.0
         version: 22.10.0
@@ -85,6 +110,20 @@ importers:
       vitest:
         specifier: 2.1.6
         version: 2.1.6(@types/node@22.10.0)(jiti@2.4.1)(yaml@2.8.2)
+
+  packages/core/npm/darwin-arm64: {}
+
+  packages/core/npm/linux-arm64-gnu: {}
+
+  packages/core/npm/linux-arm64-musl: {}
+
+  packages/core/npm/linux-x64-gnu: {}
+
+  packages/core/npm/linux-x64-musl: {}
+
+  packages/core/npm/win32-arm64-msvc: {}
+
+  packages/core/npm/win32-x64-msvc: {}
 
   packages/plugin-sdk:
     dependencies:

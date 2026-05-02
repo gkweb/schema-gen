@@ -26,17 +26,23 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Lint
         run: pnpm lint
 
+      - name: Build packages
+        run: pnpm build:packages
+
+      - name: Build native binding (host)
+        run: pnpm --filter @schema-gen/core build:binding
+
       - name: Type check
         run: pnpm typecheck
-
-      - name: Build packages
-        run: pnpm build
 
       - name: Run tests
         run: pnpm test
@@ -90,7 +96,7 @@ jobs:
       - name: Build (native)
         if: ${{ !matrix.docker }}
         shell: bash
-        run: pnpm --filter @schema-gen/core build:binding -- --target ${{ matrix.target }}
+        run: pnpm --filter @schema-gen/core build:binding --target ${{ matrix.target }}
 
       - name: Build (docker)
         if: ${{ matrix.docker }}
@@ -99,7 +105,15 @@ jobs:
           image: ${{ matrix.docker }}
           options: --user 0:0 -v ${{ github.workspace }}:/build -w /build
           run: |
-            corepack enable
-            pnpm install
+            set -e
+            rustup update stable && rustup default stable
             rustup target add ${{ matrix.target }} || true
-            cd packages/core && pnpm build:binding -- --target ${{ matrix.target }}
+            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-musl" ]; then
+              export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+            fi
+            wget -qO /usr/local/bin/pnpm "https://github.com/pnpm/pnpm/releases/download/v9.14.2/pnpm-linuxstatic-$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
+            chmod +x /usr/local/bin/pnpm
+            pnpm --version
+            pnpm install --frozen-lockfile
+            cd packages/core && pnpm build:binding --target ${{ matrix.target }}

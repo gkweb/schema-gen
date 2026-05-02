@@ -74,6 +74,7 @@ const requestPaths: Plugin = {
       {
         path: fileName,
         content: output.trimEnd() + '\n',
+        skipFormat: false,
       },
     ];
   },

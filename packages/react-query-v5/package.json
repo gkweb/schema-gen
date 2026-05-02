@@ -4,11 +4,11 @@
   "type": "module",
   "description": "React Query v5 plugin for schema-gen - generates TanStack React Query hooks",
   "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.mts"
     }
   },
   "files": [

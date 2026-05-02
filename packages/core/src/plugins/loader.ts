@@ -84,7 +84,7 @@ function isPluginObject(config: PluginConfig): config is PluginObject {
 /**
  * Normalize plugin configuration to { name, config } format
  */
-function normalizePluginConfig(config: PluginConfig): {
+function normalizePluginConfig(config: Exclude<PluginConfig, PluginObject>): {
   name: string;
   pluginConfig: Record<string, unknown>;
 } {

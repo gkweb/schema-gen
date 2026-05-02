@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reactQueryV5 } from './index';
-import type { EndpointNode, SchemaAst } from '@schema-gen/plugin-sdk';
+import type { EndpointNode, SchemaAst, GeneratedFile } from '@schema-gen/plugin-sdk';
 import { createPluginContext } from '@schema-gen/plugin-sdk';
 
 function ep(
@@ -68,7 +68,7 @@ describe('per-op fetchFn override', () => {
       },
     });
     const ctx = createPluginContext(ast([ep('listPets', 'GET', '/pets')]));
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain("import { specificFetch } from './specific';");
     expect(file.content).toContain('specificFetch<');
@@ -83,7 +83,7 @@ describe('per-op fetchFn override', () => {
       },
     });
     const ctx = createPluginContext(ast([ep('listPets', 'GET', '/pets')]));
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     // listPets uses native fetch; no globalFetch import is generated
     // because no operation references the global wrapper.
@@ -101,7 +101,7 @@ describe('per-op fetchFn override', () => {
     const ctx = createPluginContext(
       ast([ep('listPets', 'GET', '/pets'), ep('createPet', 'POST', '/pets', true)]),
     );
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain("import { globalFetch } from './global';");
     expect(file.content).toContain("import { mutFetch } from './mut-specific';");
@@ -116,7 +116,7 @@ describe('queryOptions / mutationOptions wrappers', () => {
       queryOptions: { from: './opts', name: 'wrapQuery' },
     });
     const ctx = createPluginContext(ast([ep('listPets', 'GET', '/pets')]));
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain("import { wrapQuery } from './opts';");
     expect(file.content).toContain(
@@ -129,7 +129,7 @@ describe('queryOptions / mutationOptions wrappers', () => {
       mutationOptions: { from: './opts', name: 'wrapMut' },
     });
     const ctx = createPluginContext(ast([ep('createPet', 'POST', '/pets', true)]));
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain("import { wrapMut } from './opts';");
     expect(file.content).toContain(
@@ -150,7 +150,7 @@ describe('queryOptions / mutationOptions wrappers', () => {
     const ctx = createPluginContext(
       ast([ep('listPets', 'GET', '/pets'), ep('listOrders', 'GET', '/orders')]),
     );
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain("import { globalWrap } from './global-opts';");
     expect(file.content).toContain("import { opWrap } from './op-opts';");
@@ -165,7 +165,7 @@ describe('queryOptions / mutationOptions wrappers', () => {
   it('emits no wrapper call when neither global nor per-op options are configured', async () => {
     const plugin = reactQueryV5();
     const ctx = createPluginContext(ast([ep('listPets', 'GET', '/pets')]));
-    const [file] = await plugin.emit!(ctx);
+    const [file] = await plugin.emit!(ctx) as GeneratedFile[];
 
     expect(file.content).toContain('useQuery(getListPetsQueryOptions(options))');
     // No opContext literal should appear

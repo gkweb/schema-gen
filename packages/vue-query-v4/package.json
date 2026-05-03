@@ -1,6 +1,6 @@
 {
   "name": "@schema-gen/plugin-vue-query-v4",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Vue Query v4 plugin for schema-gen - generates TanStack Vue Query composables",
   "main": "dist/index.mjs",

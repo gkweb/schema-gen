@@ -1,6 +1,6 @@
 {
   "name": "@schema-gen/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "CLI for schema-gen - OpenAPI to TypeScript/React Query/Vue Query code generation",
   "bin": {

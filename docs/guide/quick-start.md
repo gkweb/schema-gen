@@ -128,7 +128,7 @@ npx schema-gen generate
 You'll see output like:
 
 ```
-schema-gen v0.1.0
+schema-gen v0.2.0
 
 Using config: schema-gen.config.ts
 Input: ./openapi.yaml

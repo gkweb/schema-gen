@@ -112,7 +112,7 @@ npx schema-gen --version
 You should see output like:
 
 ```
-0.1.0
+0.2.0
 ```
 
 ## Next Steps

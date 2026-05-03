@@ -136,7 +136,7 @@ Get the schema-gen version.
 import { getVersion } from '@schema-gen/core';
 
 const version = getVersion();
-// version: string (e.g., '0.1.0')
+// version: string (e.g., '0.2.0')
 ```
 
 ## Types

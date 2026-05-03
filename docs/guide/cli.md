@@ -176,7 +176,7 @@ Display the version number.
 
 ```bash
 schema-gen --version
-# 0.1.0
+# 0.2.0
 ```
 
 ### `--help`

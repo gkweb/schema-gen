@@ -5,7 +5,18 @@
     { "repo": "gkweb/schema-gen" }
   ],
   "commit": false,
-  "fixed": [],
+  "fixed": [
+    [
+      "@schema-gen/core",
+      "@schema-gen/core-darwin-arm64",
+      "@schema-gen/core-linux-x64-gnu",
+      "@schema-gen/core-linux-x64-musl",
+      "@schema-gen/core-linux-arm64-gnu",
+      "@schema-gen/core-linux-arm64-musl",
+      "@schema-gen/core-win32-x64-msvc",
+      "@schema-gen/core-win32-arm64-msvc"
+    ]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

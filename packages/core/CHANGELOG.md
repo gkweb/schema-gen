@@ -1,5 +1,15 @@
 # @schema-gen/core
 
+## 1.0.0
+
+### Major Changes
+
+- [`e67fbb6`](https://github.com/gkweb/schema-gen/commit/e67fbb6ff7514fd26d8dbc76547d39165a0ac0fa) Thanks [@gkweb](https://github.com/gkweb)! - fix: keep platform-binary versions in lockstep with @schema-gen/core via fixed
+
+### Patch Changes
+
+- [`de8e069`](https://github.com/gkweb/schema-gen/commit/de8e069f02e7f9bdf01d7b4365e708a694c48e29) Thanks [@gkweb](https://github.com/gkweb)! - docs: publish per-package READMEs
+
 ## 0.2.0
 
 ### Minor Changes

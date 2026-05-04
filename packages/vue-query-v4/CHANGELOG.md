@@ -1,5 +1,14 @@
 # @schema-gen/plugin-vue-query-v4
 
+## 0.2.1
+
+### Patch Changes
+
+- [`de8e069`](https://github.com/gkweb/schema-gen/commit/de8e069f02e7f9bdf01d7b4365e708a694c48e29) Thanks [@gkweb](https://github.com/gkweb)! - docs: publish per-package READMEs
+
+- Updated dependencies [[`de8e069`](https://github.com/gkweb/schema-gen/commit/de8e069f02e7f9bdf01d7b4365e708a694c48e29)]:
+  - @schema-gen/plugin-sdk@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

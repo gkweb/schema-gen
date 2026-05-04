@@ -1,6 +1,6 @@
 {
   "name": "@schema-gen/plugin-react-query-v5",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "React Query v5 plugin for schema-gen - generates TanStack React Query hooks",
   "main": "dist/index.mjs",

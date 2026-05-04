@@ -1,6 +1,6 @@
 {
   "name": "@schema-gen/core",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "High-performance OpenAPI to TypeScript/React Query/Vue Query code generation",
   "main": "dist/index.mjs",
